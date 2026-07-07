@@ -14,38 +14,163 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Copy HTML to App Bundle
+      - name: Create Xcode Project
         run: |
-          cp www/index.html ios/App/App/index.html
-          echo "HTML copied to app bundle"
+          # Create a minimal iOS app project using Swift
+          mkdir -p MyApp/MyApp
+          
+          # Create AppDelegate.swift with WKWebView
+          cat > MyApp/MyApp/AppDelegate.swift << 'SWIFTEOF'
+          import UIKit
+          import WebKit
+
+          @UIApplicationMain
+          class AppDelegate: UIResponder, UIApplicationDelegate {
+              var window: UIWindow?
+
+              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                  window = UIWindow(frame: UIScreen.main.bounds)
+                  
+                  let config = WKWebViewConfiguration()
+                  config.allowsInlineMediaPlayback = true
+                  config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+                  
+                  let webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
+                  webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                  webView.scrollView.bounces = false
+                  webView.isOpaque = false
+                  webView.backgroundColor = UIColor(red: 0.043, green: 0.055, blue: 0.078, alpha: 1.0)
+                  
+                  if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html") {
+                      webView.loadFileURL(URL(fileURLWithPath: htmlPath), allowingReadAccessTo: URL(fileURLWithPath: htmlPath).deletingLastPathComponent())
+                  }
+                  
+                  let vc = UIViewController()
+                  vc.view = webView
+                  window?.rootViewController = vc
+                  window?.makeKeyAndVisible()
+                  
+                  return true
+              }
+          }
+          SWIFTEOF
+
+          # Copy HTML
+          cp www/index.html MyApp/MyApp/index.html
+
+          # Create Info.plist
+          cat > MyApp/MyApp/Info.plist << 'PLISTEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>zh_CN</string>
+              <key>CFBundleDisplayName</key>
+              <string>诀别</string>
+              <key>CFBundleExecutable</key>
+              <string>$(EXECUTABLE_NAME)</string>
+              <key>CFBundleIdentifier</key>
+              <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>$(PRODUCT_NAME)</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UIRequiredDeviceCapabilities</key>
+              <array>
+                  <string>arm64</string>
+              </array>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+              </array>
+              <key>UISupportedInterfaceOrientations~ipad</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationPortraitUpsideDown</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+              </array>
+              <key>UIViewControllerBasedStatusBarAppearance</key>
+              <true/>
+              <key>UIStatusBarStyle</key>
+              <string>UIStatusBarStyleLightContent</string>
+              <key>UILaunchStoryboardName</key>
+              <string>LaunchScreen</string>
+              <key>ITSAppUsesNonExemptEncryption</key>
+              <false/>
+          </dict>
+          </plist>
+          PLISTEOF
+
+          echo "Project files created"
 
       - name: Build iOS IPA
         run: |
-          cd ios/App
+          cd MyApp
           
-          # Build using xcodeproj directly (no CocoaPods needed)
-          xcodebuild \
-            -project App.xcodeproj \
-            -scheme App \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath build/App.xcarchive \
-            archive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM="" \
-            ONLY_ACTIVE_ARCH=NO \
-            SWIFT_VERSION=5.0 \
-            IPHONEOS_DEPLOYMENT_TARGET=15.0
+          # Build directly using swiftc + xcrun (no xcode project needed!)
+          # Compile Swift source
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          
+          swiftc \
+            -sdk "$SDK_PATH" \
+            -target arm64-apple-ios15.0 \
+            -O \
+            -framework UIKit \
+            -framework WebKit \
+            -framework Foundation \
+            -o MyApp \
+            MyApp/AppDelegate.swift
+          
+          echo "Binary compiled successfully!"
+          ls -la MyApp
+          file MyApp
 
-          mkdir -p Payload
-          cp -R build/App.xcarchive/Products/Applications/App.app Payload/
-          zip -r ../../App.ipa Payload
+          # Create app bundle
+          mkdir -p Payload/App.app
+          cp MyApp Payload/App.app/App
+          cp MyApp/MyApp/Info.plist Payload/App.app/
+          cp MyApp/MyApp/index.html Payload/App.app/
+          
+          # Create LaunchScreen storyboard (minimal)
+          mkdir -p Payload/App.app/Base.lproj
+          cat > Payload/App.app/Base.lproj/LaunchScreen.storyboard << 'SBEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="AppleSDK" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+              <scenes>
+                  <scene sceneID="EHf-IW-A2E">
+                      <objects>
+                          <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                              <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                                  <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                                  <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                  <color key="backgroundColor" red="0.043" green="0.055" blue="0.078" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                              </view>
+                          </viewController>
+                          <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+                      </objects>
+                      <point key="canvasLocation" x="53" y="375"/>
+                  </scene>
+              </scenes>
+          </document>
+          SBEOF
+
+          # Create IPA
+          zip -r ../App.ipa Payload
           
           echo "IPA created!"
-          ls -la ../../App.ipa
+          ls -la ../App.ipa
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
