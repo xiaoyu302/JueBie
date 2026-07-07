@@ -19,99 +19,126 @@ jobs:
           xcodebuild -version
           swift --version
           xcrun --sdk iphoneos --show-sdk-path
-          ls /Applications/Xcode*.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/ 2>/dev/null || echo "No SDKs found"
+          which xcodebuild
 
-      - name: Build IPA with xcodebuild
+      - name: Create Project and Build
         run: |
-          cd ios/App
+          # Create a minimal app directory
+          mkdir -p build_app/Sources/build_app
           
-          # First, fix the pbxproj by removing SPM dependencies more carefully
-          # Backup
-          cp App.xcodeproj/project.pbxproj App.xcodeproj/project.pbxproj.bak
+          # Create main.swift with WKWebView
+          cat > build_app/Sources/build_app/main.swift << 'EOF'
+          import UIKit
+          import WebKit
           
-          # Use python to clean the pbxproj properly
-          python3 << 'PYEOF'
-          import re
-          
-          with open('App.xcodeproj/project.pbxproj', 'r') as f:
-              content = f.read()
-          
-          # Remove lines containing CapApp-SPM
-          lines = content.split('\n')
-          new_lines = []
-          skip_section = False
-          skip_count = 0
-          
-          for line in lines:
-              # Skip sections
-              if 'XCLocalSwiftPackageReference' in line:
-                  skip_section = True
-                  skip_count = 2
-                  continue
-              if 'XCSwiftPackageProductDependency' in line:
-                  skip_section = True
-                  skip_count = 2
-                  continue
-              if 'packageReferences' in line:
-                  continue
-              if 'packageProductDependencies' in line:
-                  continue
-              if 'CapApp-SPM' in line:
-                  continue
-              if 'debug.xcconfig' in line and 'baseConfigurationReference' in line:
-                  continue
-              if 'COCOAPODS' in line:
-                  # Fix the OTHER_SWIFT_FLAGS line
-                  line = '\t\t\t\tOTHER_SWIFT_FLAGS = \"$(inherited)\";'
+          class AppDelegate: UIResponder, UIApplicationDelegate {
+              var window: UIWindow?
               
-              if skip_section:
-                  skip_count -= 1
-                  if skip_count <= 0:
-                      skip_section = False
-                  continue
-              
-              new_lines.append(line)
+              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                  window = UIWindow(frame: UIScreen.main.bounds)
+                  let config = WKWebViewConfiguration()
+                  let webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
+                  webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                  webView.backgroundColor = UIColor(red: 0.043, green: 0.055, blue: 0.078, alpha: 1.0)
+                  if let path = Bundle.main.path(forResource: "index", ofType: "html") {
+                      webView.loadFileURL(URL(fileURLWithPath: path), allowingReadAccessTo: URL(fileURLWithPath: path).deletingLastPathComponent())
+                  }
+                  let vc = UIViewController()
+                  vc.view = webView
+                  window?.rootViewController = vc
+                  window?.makeKeyAndVisible()
+                  return true
+              }
+          }
           
-          with open('App.xcodeproj/project.pbxproj', 'w') as f:
-              f.write('\n'.join(new_lines))
+          UIApplicationMain(
+              CommandLine.argc,
+              CommandLine.unsafeArgv,
+              nil,
+              NSStringFromClass(AppDelegate.self)
+          )
+          EOF
           
-          print("pbxproj cleaned")
-          PYEOF
+          # Create Info.plist
+          cat > build_app/Sources/build_app/Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+          <key>CFBundleDisplayName</key><string>JueBie</string>
+          <key>CFBundleExecutable</key><string>build_app</string>
+          <key>CFBundleIdentifier</key><string>com.juebie.radar</string>
+          <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+          <key>CFBundleName</key><string>JueBie</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleShortVersionString</key><string>1.0</string>
+          <key>CFBundleVersion</key><string>1</string>
+          <key>LSRequiresIPhoneOS</key><true/>
+          <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
+          <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
+          <key>ITSAppUsesNonExemptEncryption</key><false/>
+          </dict></plist>
+          EOF
           
-          # List available targets/schemes
-          echo "=== Available targets ==="
-          xcodebuild -project App.xcodeproj -list 2>&1 || true
+          # Copy HTML
+          cp www/index.html build_app/Sources/build_app/index.html
           
-          # Build
-          xcodebuild \
-            -project App.xcodeproj \
-            -target App \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=YES \
-            CODE_SIGNING_REQUIRED=YES \
-            CODE_SIGN_IDENTITY="-" \
-            DEVELOPMENT_TEAM="" \
-            ONLY_ACTIVE_ARCH=NO \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            2>&1 | tail -80
+          # Create Package.swift
+          cat > build_app/Package.swift << 'EOF'
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+              name: "build_app",
+              platforms: [.iOS(.v15)],
+              products: [
+                  .executable(name: "build_app", targets: ["build_app"])
+              ],
+              targets: [
+                  .executableTarget(
+                      name: "build_app",
+                      path: "Sources/build_app",
+                      resources: [
+                          .process("index.html"),
+                          .process("Info.plist")
+                      ]
+                  )
+              ]
+          )
+          EOF
           
-          echo "Build exit code: ${PIPESTATUS[0]}"
+          # Build using SPM
+          cd build_app
+          swift build \
+            --sdk $(xcrun --sdk iphoneos --show-sdk-path) \
+            --target arm64-apple-ios15.0 \
+            -c release \
+            --build-path .build \
+            2>&1
           
-          # Find the .app
-          APP_PATH=$(find build -name "*.app" -type d | head -1)
-          echo "App path: $APP_PATH"
+          echo "Build exit: $?"
           
-          if [ -n "$APP_PATH" ]; then
-            mkdir -p Payload
-            cp -R "$APP_PATH" Payload/
-            zip -r ../../App.ipa Payload
-            ls -la ../../App.ipa
+          # Find binary
+          BINARY=$(find .build -name build_app -type f | head -1)
+          echo "Binary: $BINARY"
+          
+          if [ -n "$BINARY" ]; then
+            # Create .app bundle
+            mkdir -p Payload/build_app.app
+            cp "$BINARY" Payload/build_app.app/
+            cp Sources/build_app/Info.plist Payload/build_app.app/
+            cp Sources/build_app/index.html Payload/build_app.app/
+            
+            # Ad-hoc sign
+            codesign --force --sign - Payload/build_app.app/build_app 2>&1 || true
+            
+            cd Payload
+            zip -r ../../App.ipa build_app.app
+            cd ..
+            ls -la ../App.ipa
+            echo "IPA created!"
           else
-            echo "No .app found!"
-            find build -type d | head -20
+            echo "Binary not found!"
+            find .build -type f | head -30
             exit 1
           fi
 
