@@ -27,8 +27,10 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios/App
-          pod install || pod install || pod install
-          echo "Pod install done"
+          pod cache clean --all 2>/dev/null || true
+          pod deintegrate 2>/dev/null || true
+          pod install --verbose 2>&1 | tail -40
+          echo "Pod install exit: ${PIPESTATUS[0]}"
 
       - name: Build App
         run: |
