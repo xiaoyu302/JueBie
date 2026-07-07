@@ -14,116 +14,64 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare Project
+      - name: Fix Project - Remove SPM Dependencies
         run: |
-          mkdir -p MyApp/MyApp
+          cd ios/App
+          
+          # Remove all lines containing CapApp-SPM references from pbxproj
+          sed -i '' '/CapApp-SPM/d' App.xcodeproj/project.pbxproj
+          sed -i '' '/CapApp_SPM/d' App.xcodeproj/project.pbxproj
+          
+          # Remove XCLocalSwiftPackageReference and XCSwiftPackageProductDependency sections
+          sed -i '' '/XCLocalSwiftPackageReference/,/End/d' App.xcodeproj/project.pbxproj
+          sed -i '' '/XCSwiftPackageProductDependency/,/End/d' App.xcodeproj/project.pbxproj
+          
+          # Remove packageReferences and packageProductDependencies lines
+          sed -i '' '/packageReferences/d' App.xcodeproj/project.pbxproj
+          sed -i '' '/packageProductDependencies/d' App.xcodeproj/project.pbxproj
+          
+          # Remove COCOAPODS from OTHER_SWIFT_FLAGS
+          sed -i '' 's/OTHER_SWIFT_FLAGS.*COCOAPODS.*/OTHER_SWIFT_FLAGS = \"\$(inherited)\";/' App.xcodeproj/project.pbxproj
+          
+          # Remove debug.xcconfig references
+          sed -i '' '/debug.xcconfig/d' App.xcodeproj/project.pbxproj
+          
+          echo "Project fixed"
+          grep -c 'CapApp-SPM\|SPM\|packageRef\|packageProd' App.xcodeproj/project.pbxproj || echo "All SPM references removed"
 
-          # AppDelegate.swift
-          cat > MyApp/MyApp/AppDelegate.swift << 'EOF'
-          import UIKit
-          import WebKit
-
-          @UIApplicationMain
-          class AppDelegate: UIResponder, UIApplicationDelegate {
-              var window: UIWindow?
-
-              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-                  window = UIWindow(frame: UIScreen.main.bounds)
-                  let config = WKWebViewConfiguration()
-                  config.allowsInlineMediaPlayback = true
-                  let webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
-                  webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                  webView.scrollView.bounces = false
-                  webView.isOpaque = false
-                  webView.backgroundColor = UIColor(red: 0.043, green: 0.055, blue: 0.078, alpha: 1.0)
-                  if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html") {
-                      webView.loadFileURL(URL(fileURLWithPath: htmlPath), allowingReadAccessTo: URL(fileURLWithPath: htmlPath).deletingLastPathComponent())
-                  }
-                  let vc = UIViewController()
-                  vc.view = webView
-                  window?.rootViewController = vc
-                  window?.makeKeyAndVisible()
-                  return true
-              }
-          }
-          EOF
-
-          cp www/index.html MyApp/MyApp/index.html
-
-          # Info.plist
-          cat > MyApp/MyApp/Info.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-          <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
-          <key>CFBundleDisplayName</key><string>JueBie</string>
-          <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
-          <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-          <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-          <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
-          <key>CFBundlePackageType</key><string>APPL</string>
-          <key>CFBundleShortVersionString</key><string>1.0</string>
-          <key>CFBundleVersion</key><string>1</string>
-          <key>LSRequiresIPhoneOS</key><true/>
-          <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
-          <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
-          <key>UIViewControllerBasedStatusBarAppearance</key><true/>
-          <key>ITSAppUsesNonExemptEncryption</key><false/>
-          </dict></plist>
-          EOF
-
-          # Create LaunchScreen.storyboard
-          mkdir -p MyApp/MyApp/Base.lproj
-          cat > MyApp/MyApp/Base.lproj/LaunchScreen.storyboard << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="AppleSDK" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-          <scenes><scene sceneID="EHf-IW-A2E"><objects><viewController id="01J-lp-oVM" sceneMemberID="viewController"><view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3"><rect key="frame" x="0.0" y="0.0" width="414" height="896"/><autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/><color key="backgroundColor" red="0.043" green="0.055" blue="0.078" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></view></viewController><placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/></objects><point key="canvasLocation" x="53" y="375"/></scene></scenes>
-          </document>
-          EOF
-
-          echo "Files prepared"
+      - name: Copy HTML to App
+        run: |
+          cp www/index.html ios/App/App/index.html
+          echo "HTML copied"
 
       - name: Build iOS IPA
         run: |
-          cd MyApp
+          cd ios/App
           
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "SDK: $SDK_PATH"
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            SWIFT_VERSION=5.0 \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0
           
-          # Compile each source
-          swiftc \
-            -sdk "$SDK_PATH" \
-            -target arm64-apple-ios15.0 \
-            -emit-executable \
-            -O \
-            -Xlinker -rpath -Xlinker /usr/lib/swift \
-            -Xlinker -sdk_version -Xlinker 18.0 \
-            -framework UIKit \
-            -framework WebKit \
-            -framework Foundation \
-            -o MyApp \
-            MyApp/AppDelegate.swift 2>&1
+          echo "Archive exit code: $?"
+
+          mkdir -p Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -r ../../App.ipa Payload
           
-          echo "Compile exit code: $?"
-          ls -la MyApp 2>/dev/null || echo "Binary not created"
-          
-          if [ -f MyApp ]; then
-            file MyApp
-            
-            # Create .app bundle
-            mkdir -p Payload/App.app
-            cp MyApp Payload/App.app/
-            cp MyApp/Info.plist Payload/App.app/
-            cp MyApp/index.html Payload/App.app/
-            cp -R MyApp/Base.lproj Payload/App.app/
-            
-            # Create IPA
-            zip -r ../App.ipa Payload
-            ls -la ../App.ipa
-          else
-            echo "BUILD FAILED"
-            exit 1
-          fi
+          echo "IPA created!"
+          ls -la ../../App.ipa
 
       - name: Upload IPA Artifact
         if: success()
