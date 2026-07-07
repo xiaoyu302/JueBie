@@ -8,138 +8,75 @@ on:
 jobs:
   build-ios:
     name: Build iOS App
-    runs-on: macos-15
+    runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show Environment
-        run: |
-          xcodebuild -version
-          swift --version
-          xcrun --sdk iphoneos --show-sdk-path
-          which xcodebuild
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Create Project and Build
+      - name: Install Capacitor
         run: |
-          # Create a minimal app directory
-          mkdir -p build_app/Sources/build_app
+          npm install
+          npx cap sync ios
+
+      - name: Debug - Show Project State
+        run: |
+          echo "=== Files in ios/App ==="
+          ls -la ios/App/
+          echo ""
+          echo "=== Podfile ==="
+          cat ios/App/Podfile 2>/dev/null || echo "No Podfile"
+          echo ""
+          echo "=== Workspace ==="
+          ls ios/App/*.xcworkspace 2>/dev/null || echo "No workspace"
+          echo ""
+          echo "=== Xcode version ==="
+          xcodebuild -version
+          echo ""
+          echo "=== Available schemes ==="
+          cd ios/App && xcodebuild -list 2>&1 || true
+
+      - name: Install Pods
+        run: |
+          cd ios/App
+          pod install --verbose 2>&1 | tail -30
+
+      - name: Build IPA
+        run: |
+          cd ios/App
           
-          # Create main.swift with WKWebView
-          cat > build_app/Sources/build_app/main.swift << 'EOF'
-          import UIKit
-          import WebKit
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            2>&1 | tail -50
           
-          class AppDelegate: UIResponder, UIApplicationDelegate {
-              var window: UIWindow?
-              
-              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-                  window = UIWindow(frame: UIScreen.main.bounds)
-                  let config = WKWebViewConfiguration()
-                  let webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
-                  webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                  webView.backgroundColor = UIColor(red: 0.043, green: 0.055, blue: 0.078, alpha: 1.0)
-                  if let path = Bundle.main.path(forResource: "index", ofType: "html") {
-                      webView.loadFileURL(URL(fileURLWithPath: path), allowingReadAccessTo: URL(fileURLWithPath: path).deletingLastPathComponent())
-                  }
-                  let vc = UIViewController()
-                  vc.view = webView
-                  window?.rootViewController = vc
-                  window?.makeKeyAndVisible()
-                  return true
-              }
-          }
+          echo "Build exit: ${PIPESTATUS[0]}"
           
-          UIApplicationMain(
-              CommandLine.argc,
-              CommandLine.unsafeArgv,
-              nil,
-              NSStringFromClass(AppDelegate.self)
-          )
-          EOF
+          mkdir -p Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app Payload/ 2>/dev/null || echo "No .app found"
           
-          # Create Info.plist
-          cat > build_app/Sources/build_app/Info.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-          <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
-          <key>CFBundleDisplayName</key><string>JueBie</string>
-          <key>CFBundleExecutable</key><string>build_app</string>
-          <key>CFBundleIdentifier</key><string>com.juebie.radar</string>
-          <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-          <key>CFBundleName</key><string>JueBie</string>
-          <key>CFBundlePackageType</key><string>APPL</string>
-          <key>CFBundleShortVersionString</key><string>1.0</string>
-          <key>CFBundleVersion</key><string>1</string>
-          <key>LSRequiresIPhoneOS</key><true/>
-          <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
-          <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
-          <key>ITSAppUsesNonExemptEncryption</key><false/>
-          </dict></plist>
-          EOF
-          
-          # Copy HTML
-          cp www/index.html build_app/Sources/build_app/index.html
-          
-          # Create Package.swift
-          cat > build_app/Package.swift << 'EOF'
-          // swift-tools-version:5.9
-          import PackageDescription
-          let package = Package(
-              name: "build_app",
-              platforms: [.iOS(.v15)],
-              products: [
-                  .executable(name: "build_app", targets: ["build_app"])
-              ],
-              targets: [
-                  .executableTarget(
-                      name: "build_app",
-                      path: "Sources/build_app",
-                      resources: [
-                          .process("index.html"),
-                          .process("Info.plist")
-                      ]
-                  )
-              ]
-          )
-          EOF
-          
-          # Build using SPM
-          cd build_app
-          swift build \
-            --sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-            --target arm64-apple-ios15.0 \
-            -c release \
-            --build-path .build \
-            2>&1
-          
-          echo "Build exit: $?"
-          
-          # Find binary
-          BINARY=$(find .build -name build_app -type f | head -1)
-          echo "Binary: $BINARY"
-          
-          if [ -n "$BINARY" ]; then
-            # Create .app bundle
-            mkdir -p Payload/build_app.app
-            cp "$BINARY" Payload/build_app.app/
-            cp Sources/build_app/Info.plist Payload/build_app.app/
-            cp Sources/build_app/index.html Payload/build_app.app/
-            
-            # Ad-hoc sign
-            codesign --force --sign - Payload/build_app.app/build_app 2>&1 || true
-            
+          if [ -d "Payload/App.app" ]; then
             cd Payload
-            zip -r ../../App.ipa build_app.app
+            zip -r ../../App.ipa App.app
             cd ..
             ls -la ../App.ipa
-            echo "IPA created!"
           else
-            echo "Binary not found!"
-            find .build -type f | head -30
-            exit 1
+            find build -name "*.app" -type d 2>/dev/null
           fi
 
       - name: Upload IPA
