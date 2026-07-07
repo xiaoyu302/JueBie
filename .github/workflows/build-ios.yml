@@ -14,43 +14,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fix Project - Remove SPM Dependencies
+      - name: Fix Project
         run: |
           cd ios/App
           
-          # Remove all lines containing CapApp-SPM references from pbxproj
+          # Remove SPM references
           sed -i '' '/CapApp-SPM/d' App.xcodeproj/project.pbxproj
-          sed -i '' '/CapApp_SPM/d' App.xcodeproj/project.pbxproj
-          
-          # Remove XCLocalSwiftPackageReference and XCSwiftPackageProductDependency sections
           sed -i '' '/XCLocalSwiftPackageReference/,/End/d' App.xcodeproj/project.pbxproj
           sed -i '' '/XCSwiftPackageProductDependency/,/End/d' App.xcodeproj/project.pbxproj
-          
-          # Remove packageReferences and packageProductDependencies lines
           sed -i '' '/packageReferences/d' App.xcodeproj/project.pbxproj
           sed -i '' '/packageProductDependencies/d' App.xcodeproj/project.pbxproj
-          
-          # Remove COCOAPODS from OTHER_SWIFT_FLAGS
-          sed -i '' 's/OTHER_SWIFT_FLAGS.*COCOAPODS.*/OTHER_SWIFT_FLAGS = \"\$(inherited)\";/' App.xcodeproj/project.pbxproj
-          
-          # Remove debug.xcconfig references
           sed -i '' '/debug.xcconfig/d' App.xcodeproj/project.pbxproj
           
+          # Remove COCOAPODS flags
+          sed -i '' 's/OTHER_SWIFT_FLAGS.*COCOAPODS.*/OTHER_SWIFT_FLAGS = \"\$(inherited)\";/' App.xcodeproj/project.pbxproj
+          
+          echo "=== Available targets ==="
+          xcodebuild -project App.xcodeproj -list
+          
           echo "Project fixed"
-          grep -c 'CapApp-SPM\|SPM\|packageRef\|packageProd' App.xcodeproj/project.pbxproj || echo "All SPM references removed"
 
-      - name: Copy HTML to App
+      - name: Copy HTML
         run: |
           cp www/index.html ios/App/App/index.html
-          echo "HTML copied"
 
-      - name: Build iOS IPA
+      - name: Build IPA
         run: |
           cd ios/App
           
           xcodebuild \
             -project App.xcodeproj \
-            -scheme App \
+            -target App \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
@@ -60,20 +54,16 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
-            ONLY_ACTIVE_ARCH=NO \
-            SWIFT_VERSION=5.0 \
-            IPHONEOS_DEPLOYMENT_TARGET=15.0
+            ONLY_ACTIVE_ARCH=NO
           
-          echo "Archive exit code: $?"
-
+          echo "Build exit: $?"
+          
           mkdir -p Payload
           cp -R build/App.xcarchive/Products/Applications/App.app Payload/
           zip -r ../../App.ipa Payload
-          
-          echo "IPA created!"
           ls -la ../../App.ipa
 
-      - name: Upload IPA Artifact
+      - name: Upload IPA
         if: success()
         uses: actions/upload-artifact@v4
         with:
