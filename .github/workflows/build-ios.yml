@@ -24,59 +24,47 @@ jobs:
           npm install
           npx cap sync ios
 
-      - name: Debug - Show Project State
-        run: |
-          echo "=== Files in ios/App ==="
-          ls -la ios/App/
-          echo ""
-          echo "=== Podfile ==="
-          cat ios/App/Podfile 2>/dev/null || echo "No Podfile"
-          echo ""
-          echo "=== Workspace ==="
-          ls ios/App/*.xcworkspace 2>/dev/null || echo "No workspace"
-          echo ""
-          echo "=== Xcode version ==="
-          xcodebuild -version
-          echo ""
-          echo "=== Available schemes ==="
-          cd ios/App && xcodebuild -list 2>&1 || true
-
       - name: Install Pods
         run: |
           cd ios/App
-          pod install --verbose 2>&1 | tail -30
+          pod install
 
-      - name: Build IPA
+      - name: Build
         run: |
           cd ios/App
           
+          # Build without archiving - just create .app in derived data
           xcodebuild \
             -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -archivePath build/App.xcarchive \
-            archive \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
             ONLY_ACTIVE_ARCH=NO \
-            2>&1 | tail -50
+            build \
+            2>&1 | tail -30
           
           echo "Build exit: ${PIPESTATUS[0]}"
           
-          mkdir -p Payload
-          cp -R build/App.xcarchive/Products/Applications/App.app Payload/ 2>/dev/null || echo "No .app found"
+          # Find .app
+          APP_PATH=$(find build -name "*.app" -path "*/Release-iphoneos/*" -type d | head -1)
+          echo "App: $APP_PATH"
           
-          if [ -d "Payload/App.app" ]; then
-            cd Payload
-            zip -r ../../App.ipa App.app
-            cd ..
-            ls -la ../App.ipa
+          if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+            mkdir -p Payload
+            cp -R "$APP_PATH" Payload/
+            zip -r ../../App.ipa Payload
+            ls -la ../../App.ipa
+            echo "IPA CREATED!"
           else
-            find build -name "*.app" -type d 2>/dev/null
+            echo "No .app found. Listing build dir:"
+            find build -maxdepth 4 -type d 2>/dev/null | head -30
+            exit 1
           fi
 
       - name: Upload IPA
