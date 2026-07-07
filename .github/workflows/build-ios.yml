@@ -19,33 +19,25 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Dependencies
+      - name: Install Capacitor & Pods
         run: |
           npm install
           npx cap sync ios
-
-      - name: Install CocoaPods
-        run: |
           cd ios/App
           pod cache clean --all 2>/dev/null || true
-          pod deintegrate 2>/dev/null || true
-          pod install --verbose 2>&1 | tail -40
-          echo "Pod install exit: ${PIPESTATUS[0]}"
+          pod install
 
       - name: Build App
         run: |
           cd ios/App
           
-          echo "=== Xcode Version ==="
+          echo "=== Xcode ==="
           xcodebuild -version
           
-          echo "=== Workspace Contents ==="
-          ls -la App.xcworkspace/
-          
-          echo "=== Available Schemes ==="
+          echo "=== Schemes ==="
           xcodebuild -workspace App.xcworkspace -list
           
-          echo "=== Starting Build ==="
+          echo "=== Building ==="
           set -o pipefail
           xcodebuild \
             -workspace App.xcworkspace \
@@ -62,23 +54,17 @@ jobs:
             ONLY_ACTIVE_ARCH=NO \
             build 2>&1 | tee build.log
           
-          BUILD_EXIT=${PIPESTATUS[0]}
-          echo "Build exit: $BUILD_EXIT"
+          EC=${PIPESTATUS[0]}
+          echo "Exit: $EC"
+          tail -30 build.log
           
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo "=== Last 80 lines ==="
-            tail -80 build.log
-            exit 1
-          fi
+          if [ $EC -ne 0 ]; then exit 1; fi
           
           APP_PATH=$(find build -name "App.app" -path "*/Release-iphoneos/*" -type d | head -1)
-          echo "App: $APP_PATH"
-          
           if [ -z "$APP_PATH" ]; then
-            echo "Searching for .app..."
-            find build -name "*.app" -type d 2>/dev/null
-            exit 1
+            APP_PATH=$(find build -name "*.app" -type d | head -1)
           fi
+          echo "App: $APP_PATH"
           
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
@@ -86,6 +72,7 @@ jobs:
           ls -la ../../App.ipa
 
       - name: Upload IPA
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: JueBie-iOS
