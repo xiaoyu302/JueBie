@@ -1,0 +1,70 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
+      - name: Build iOS IPA
+        run: |
+          cd ios/App
+          
+          # Build the app without signing
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO
+          
+          # Create Payload structure
+          mkdir -p Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app Payload/
+          
+          # Create IPA
+          zip -r ../../App.ipa Payload
+          
+          echo "IPA created at: $(pwd)/../../App.ipa"
+          ls -la ../../App.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JueBie-iOS
+          path: App.ipa
+          retention-days: 7
+
+      - name: Show Download Link
+        run: |
+          echo "============================================"
+          echo "  IPA BUILD COMPLETE"
+          echo "  Download the artifact from the Actions"
+          echo "  summary page (Artifacts section)"
+          echo "============================================"

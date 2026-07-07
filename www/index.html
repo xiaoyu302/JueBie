@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="诀别">
+    <title>诀别</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #0b0e14; color: #c8d0dc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; -webkit-user-select: none; user-select: none; }
+        .app-container { max-width: 420px; width: 100%; background: #131a24; border-radius: 32px; padding: 20px 18px 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #2a3645; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #8899aa; padding-bottom: 12px; border-bottom: 1px solid #1f2a36; margin-bottom: 16px; }
+        .status-bar .time { color: #a0b3c9; font-weight: 600; }
+        .status-bar .badge { background: #1f8b4c; color: #fff; padding: 2px 12px; border-radius: 40px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .header .logo-area { display: flex; align-items: center; gap: 10px; }
+        .header .logo-area .brand { font-weight: 700; font-size: 22px; color: #e8edf5; letter-spacing: 2px; }
+        .header .logo-area .brand span { color: #ff4d6d; }
+        .header .license { background: #1e2a3a; padding: 4px 12px; border-radius: 40px; font-size: 11px; color: #7a8fa8; border: 1px solid #2f4055; }
+        .header .license .active { color: #4cd9a0; font-weight: 600; }
+        .game-selector { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .game-selector .game-btn { background: #1c2633; border: none; color: #7a8fa8; padding: 6px 18px; border-radius: 40px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .game-selector .game-btn.active { background: #1f2b3d; color: #e0e8f2; border-color: #4a9eff; box-shadow: 0 0 12px rgba(74, 158, 255, 0.08); }
+        .kernel-status { display: flex; align-items: center; gap: 12px; background: #101a24; padding: 10px 16px; border-radius: 60px; margin-bottom: 16px; border: 1px solid #25313f; }
+        .kernel-status .dot { width: 10px; height: 10px; border-radius: 50%; background: #4cd9a0; box-shadow: 0 0 8px #4cd9a080; }
+        .kernel-status .label { font-size: 13px; color: #a0b3c9; flex: 1; }
+        .kernel-status .label strong { color: #e0e8f2; }
+        .kernel-status .pid { font-size: 12px; color: #5a6f88; background: #1a2635; padding: 2px 12px; border-radius: 40px; }
+        .radar-wrapper { position: relative; background: #0c121c; border-radius: 24px; padding: 12px; border: 1px solid #25313f; margin-bottom: 16px; }
+        .radar-wrapper canvas { display: block; width: 100%; aspect-ratio: 1/1; border-radius: 16px; background: #0a0f17; touch-action: none; }
+        .footer-stats { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #5a6f88; padding-top: 8px; border-top: 1px solid #1a2635; margin-top: 4px; }
+        .footer-stats .stat-item { display: flex; align-items: center; gap: 6px; }
+        .footer-stats .stat-item .num { color: #c8d0dc; font-weight: 600; }
+        .action-bar { display: flex; gap: 10px; margin-top: 6px; }
+        .action-bar .btn { flex: 1; background: #1c2633; border: none; color: #a0b3c9; padding: 12px 0; border-radius: 60px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #2a3645; transition: all 0.2s; text-align: center; }
+        .action-bar .btn.primary { background: #1f8b4c; border-color: #2aaf6a; color: #fff; }
+        .action-bar .btn.primary .sub { font-weight: 400; font-size: 11px; color: #8cd4b0; }
+        @media (max-width: 480px) { .app-container { padding: 16px 12px 20px; } .header .logo-area .brand { font-size: 17px; } }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="status-bar">
+        <span class="time" id="statusTime">03:02</span>
+        <span class="badge">ONLINE</span>
+    </div>
+    <div class="header">
+        <div class="logo-area">
+            <span class="brand"><span>诀</span>别</span>
+        </div>
+        <div class="license">
+            <span class="active">●</span> LICENSE ACTIVE
+        </div>
+    </div>
+    <div class="game-selector">
+        <button class="game-btn">和平精英</button>
+        <button class="game-btn active">三角洲</button>
+    </div>
+    <div class="kernel-status">
+        <span class="dot"></span>
+        <span class="label"><strong>KERNEL</strong> · IDLE</span>
+        <span class="pid">PID: 0x7A3F</span>
+    </div>
+    <div class="radar-wrapper">
+        <canvas id="radarCanvas" width="600" height="600"></canvas>
+    </div>
+    <div class="footer-stats">
+        <span class="stat-item">TARGET <span class="num" id="targetCount">0</span></span>
+        <span class="stat-item">UPDATE <span class="num" id="updateRate">0</span>ms</span>
+        <span class="stat-item">CONNECTED</span>
+    </div>
+    <div class="action-bar">
+        <button class="btn">SETTINGS</button>
+        <button class="btn primary" id="toggleSimBtn">
+            <span id="simBtnText">PAUSE</span>
+            <div class="sub">SIM DATA</div>
+        </button>
+    </div>
+</div>
+<script>
+(function() {
+    'use strict';
+    const canvas = document.getElementById('radarCanvas');
+    const ctx = canvas.getContext('2d');
+    const targetCountEl = document.getElementById('targetCount');
+    const updateRateEl = document.getElementById('updateRate');
+    const statusTimeEl = document.getElementById('statusTime');
+    const simBtnText = document.getElementById('simBtnText');
+    const CONFIG = { radarRadius: 260, playerCount: 8, moveSpeed: 0.6, updateInterval: 50, maxDistance: 240 };
+    let isRunning = true;
+    let frameCount = 0;
+    let lastTimestamp = performance.now();
+    let players = [];
+
+    function generatePlayers(count) {
+        const list = [];
+        const centerX = 300, centerY = 300;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * 2 * Math.PI;
+            const dist = 20 + Math.random() * CONFIG.maxDistance * 0.9;
+            const x = centerX + Math.cos(angle) * dist;
+            const y = centerY + Math.sin(angle) * dist;
+            const isEnemy = i % 2 === 0;
+            list.push({ id: i, x: x, y: y, vx: (Math.random() - 0.5) * CONFIG.moveSpeed * 1.2, vy: (Math.random() - 0.5) * CONFIG.moveSpeed * 1.2, isEnemy: isEnemy, health: 60 + Math.random() * 40, phase: Math.random() * 100 });
+        }
+        return list;
+    }
+
+    function updatePlayers() {
+        const centerX = 300, centerY = 300;
+        for (const p of players) {
+            p.vx += (Math.random() - 0.5) * 0.3;
+            p.vy += (Math.random() - 0.5) * 0.3;
+            const maxSpeed = CONFIG.moveSpeed * 1.8;
+            let spd = Math.hypot(p.vx, p.vy);
+            if (spd > maxSpeed) { p.vx = (p.vx / spd) * maxSpeed; p.vy = (p.vy / spd) * maxSpeed; }
+            p.x += p.vx; p.y += p.vy;
+            const dx = p.x - centerX, dy = p.y - centerY;
+            const dist = Math.hypot(dx, dy);
+            const limit = CONFIG.maxDistance - 10;
+            if (dist > limit) { p.x = centerX + (dx / dist) * limit; p.y = centerY + (dy / dist) * limit; p.vx = -p.vx * 0.5; p.vy = -p.vy * 0.5; }
+            if (dist < 15 && Math.random() < 0.02) { p.vx += (Math.random() - 0.5) * 2; p.vy += (Math.random() - 0.5) * 2; }
+        }
+    }
+
+    function drawRadar() {
+        const w = canvas.width, h = canvas.height;
+        const cx = w / 2, cy = h / 2, radius = CONFIG.radarRadius;
+        ctx.clearRect(0, 0, w, h);
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        grad.addColorStop(0, '#141e2b'); grad.addColorStop(0.7, '#0d141f'); grad.addColorStop(1, '#05080e');
+        ctx.beginPath(); ctx.arc(cx, cy, radius, 0, 2 * Math.PI); ctx.fillStyle = grad; ctx.fill();
+        ctx.strokeStyle = '#1f2d3e'; ctx.lineWidth = 0.8;
+        for (let r = 0.25; r <= 1.0; r += 0.25) { ctx.beginPath(); ctx.arc(cx, cy, radius * r, 0, 2 * Math.PI); ctx.stroke(); }
+        ctx.strokeStyle = '#1a2638'; ctx.lineWidth = 1; ctx.setLineDash([6, 8]);
+        ctx.beginPath(); ctx.moveTo(cx - radius, cy); ctx.lineTo(cx + radius, cy); ctx.moveTo(cx, cy - radius); ctx.lineTo(cx, cy + radius); ctx.stroke(); ctx.setLineDash([]);
+        const scanAngle = (performance.now() / 6000) % 1 * 2 * Math.PI;
+        const gradScan = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        gradScan.addColorStop(0, 'rgba(74, 158, 255, 0.08)'); gradScan.addColorStop(0.7, 'rgba(74, 158, 255, 0.03)'); gradScan.addColorStop(1, 'rgba(74, 158, 255, 0)');
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, radius, scanAngle - 0.35, scanAngle); ctx.closePath(); ctx.fillStyle = gradScan; ctx.fill();
+        ctx.strokeStyle = 'rgba(74, 158, 255, 0.25)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(scanAngle) * radius, cy + Math.sin(scanAngle) * radius); ctx.stroke();
+        let visibleCount = 0;
+        for (const p of players) {
+            const dx = p.x - cx, dy = p.y - cy, dist = Math.hypot(dx, dy);
+            if (dist > radius) continue;
+            visibleCount++;
+            const isEnemy = p.isEnemy, size = isEnemy ? 12 : 10;
+            const color = isEnemy ? '#ff4d6d' : '#4cd9a0', glowColor = isEnemy ? 'rgba(255, 77, 109, 0.3)' : 'rgba(76, 217, 160, 0.3)';
+            const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 2.2);
+            glow.addColorStop(0, glowColor); glow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.beginPath(); ctx.arc(p.x, p.y, size * 2.2, 0, 2 * Math.PI); ctx.fillStyle = glow; ctx.fill();
+            ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 14; ctx.fill(); ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(p.x - size * 0.2, p.y - size * 0.2, size * 0.35, 0, 2 * Math.PI); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fill();
+            const dirAngle = Math.atan2(p.vy, p.vx);
+            const tipX = p.x + Math.cos(dirAngle) * size * 1.6, tipY = p.y + Math.sin(dirAngle) * size * 1.6;
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(p.x + Math.cos(dirAngle) * size * 0.7, p.y + Math.sin(dirAngle) * size * 0.7); ctx.lineTo(tipX, tipY); ctx.stroke();
+            if (isEnemy) { ctx.fillStyle = '#ff4d6d'; ctx.font = '10px sans-serif'; ctx.fillText('▼', p.x - 6, p.y - size - 6); }
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI); ctx.fillStyle = '#4a9eff'; ctx.shadowColor = '#4a9eff'; ctx.shadowBlur = 16; ctx.fill(); ctx.shadowBlur = 0;
+        targetCountEl.textContent = visibleCount;
+    }
+
+    function gameLoop(timestamp) {
+        if (!isRunning) { requestAnimationFrame(gameLoop); return; }
+        const delta = timestamp - lastTimestamp;
+        if (delta >= 200) { const rate = Math.round(1000 / (delta / frameCount || 1)); updateRateEl.textContent = rate; frameCount = 0; lastTimestamp = timestamp; }
+        frameCount++;
+        updatePlayers(); drawRadar();
+        const now = new Date();
+        statusTimeEl.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        requestAnimationFrame(gameLoop);
+    }
+
+    function init() {
+        players = generatePlayers(CONFIG.playerCount);
+        for (let i = 0; i < players.length; i++) {
+            for (let j = i + 1; j < players.length; j++) {
+                if (Math.hypot(players[i].x - players[j].x, players[i].y - players[j].y) < 20) { players[j].x += 30; players[j].y += 30; }
+            }
+        }
+        lastTimestamp = performance.now();
+        requestAnimationFrame(gameLoop);
+        document.getElementById('toggleSimBtn').addEventListener('click', function() { isRunning = !isRunning; simBtnText.textContent = isRunning ? 'PAUSE' : 'START'; });
+    }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+})();
+</script>
+</body>
+</html>

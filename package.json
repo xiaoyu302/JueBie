@@ -1,0 +1,14 @@
+{
+  "name": "juebie",
+  "version": "1.0.0",
+  "description": "诀别 - Radar App",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.2.1",
+    "@capacitor/cli": "^7.2.1",
+    "@capacitor/ios": "^7.2.1"
+  }
+}
