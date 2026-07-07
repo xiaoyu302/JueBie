@@ -36,7 +36,16 @@ jobs:
         run: |
           cd ios/App
           
-          # Build
+          echo "=== Xcode Version ==="
+          xcodebuild -version
+          
+          echo "=== Workspace Contents ==="
+          ls -la App.xcworkspace/
+          
+          echo "=== Available Schemes ==="
+          xcodebuild -workspace App.xcworkspace -list
+          
+          echo "=== Starting Build ==="
           set -o pipefail
           xcodebuild \
             -workspace App.xcworkspace \
@@ -49,6 +58,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             ONLY_ACTIVE_ARCH=NO \
             build 2>&1 | tee build.log
           
@@ -56,22 +66,20 @@ jobs:
           echo "Build exit: $BUILD_EXIT"
           
           if [ $BUILD_EXIT -ne 0 ]; then
-            echo "=== BUILD FAILED - Last 60 lines ==="
-            tail -60 build.log
+            echo "=== Last 80 lines ==="
+            tail -80 build.log
             exit 1
           fi
           
-          # Find .app
           APP_PATH=$(find build -name "App.app" -path "*/Release-iphoneos/*" -type d | head -1)
-          echo "App path: $APP_PATH"
+          echo "App: $APP_PATH"
           
           if [ -z "$APP_PATH" ]; then
-            echo "App not found, searching..."
-            find build -name "*.app" -type d
+            echo "Searching for .app..."
+            find build -name "*.app" -type d 2>/dev/null
             exit 1
           fi
           
-          # Create IPA
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -r ../../App.ipa Payload
