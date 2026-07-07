@@ -14,13 +14,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Xcode Project
+      - name: Prepare Project
         run: |
-          # Create a minimal iOS app project using Swift
           mkdir -p MyApp/MyApp
-          
-          # Create AppDelegate.swift with WKWebView
-          cat > MyApp/MyApp/AppDelegate.swift << 'SWIFTEOF'
+
+          # AppDelegate.swift
+          cat > MyApp/MyApp/AppDelegate.swift << 'EOF'
           import UIKit
           import WebKit
 
@@ -30,149 +29,104 @@ jobs:
 
               func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
                   window = UIWindow(frame: UIScreen.main.bounds)
-                  
                   let config = WKWebViewConfiguration()
                   config.allowsInlineMediaPlayback = true
-                  config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-                  
                   let webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
                   webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                   webView.scrollView.bounces = false
                   webView.isOpaque = false
                   webView.backgroundColor = UIColor(red: 0.043, green: 0.055, blue: 0.078, alpha: 1.0)
-                  
                   if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html") {
                       webView.loadFileURL(URL(fileURLWithPath: htmlPath), allowingReadAccessTo: URL(fileURLWithPath: htmlPath).deletingLastPathComponent())
                   }
-                  
                   let vc = UIViewController()
                   vc.view = webView
                   window?.rootViewController = vc
                   window?.makeKeyAndVisible()
-                  
                   return true
               }
           }
-          SWIFTEOF
+          EOF
 
-          # Copy HTML
           cp www/index.html MyApp/MyApp/index.html
 
-          # Create Info.plist
-          cat > MyApp/MyApp/Info.plist << 'PLISTEOF'
+          # Info.plist
+          cat > MyApp/MyApp/Info.plist << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleDevelopmentRegion</key>
-              <string>zh_CN</string>
-              <key>CFBundleDisplayName</key>
-              <string>诀别</string>
-              <key>CFBundleExecutable</key>
-              <string>$(EXECUTABLE_NAME)</string>
-              <key>CFBundleIdentifier</key>
-              <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>$(PRODUCT_NAME)</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-              <key>UIRequiredDeviceCapabilities</key>
-              <array>
-                  <string>arm64</string>
-              </array>
-              <key>UISupportedInterfaceOrientations</key>
-              <array>
-                  <string>UIInterfaceOrientationPortrait</string>
-                  <string>UIInterfaceOrientationLandscapeLeft</string>
-                  <string>UIInterfaceOrientationLandscapeRight</string>
-              </array>
-              <key>UISupportedInterfaceOrientations~ipad</key>
-              <array>
-                  <string>UIInterfaceOrientationPortrait</string>
-                  <string>UIInterfaceOrientationPortraitUpsideDown</string>
-                  <string>UIInterfaceOrientationLandscapeLeft</string>
-                  <string>UIInterfaceOrientationLandscapeRight</string>
-              </array>
-              <key>UIViewControllerBasedStatusBarAppearance</key>
-              <true/>
-              <key>UIStatusBarStyle</key>
-              <string>UIStatusBarStyleLightContent</string>
-              <key>UILaunchStoryboardName</key>
-              <string>LaunchScreen</string>
-              <key>ITSAppUsesNonExemptEncryption</key>
-              <false/>
-          </dict>
-          </plist>
-          PLISTEOF
+          <plist version="1.0"><dict>
+          <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+          <key>CFBundleDisplayName</key><string>JueBie</string>
+          <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+          <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+          <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+          <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleShortVersionString</key><string>1.0</string>
+          <key>CFBundleVersion</key><string>1</string>
+          <key>LSRequiresIPhoneOS</key><true/>
+          <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
+          <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
+          <key>UIViewControllerBasedStatusBarAppearance</key><true/>
+          <key>ITSAppUsesNonExemptEncryption</key><false/>
+          </dict></plist>
+          EOF
 
-          echo "Project files created"
+          # Create LaunchScreen.storyboard
+          mkdir -p MyApp/MyApp/Base.lproj
+          cat > MyApp/MyApp/Base.lproj/LaunchScreen.storyboard << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="AppleSDK" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+          <scenes><scene sceneID="EHf-IW-A2E"><objects><viewController id="01J-lp-oVM" sceneMemberID="viewController"><view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3"><rect key="frame" x="0.0" y="0.0" width="414" height="896"/><autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/><color key="backgroundColor" red="0.043" green="0.055" blue="0.078" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></view></viewController><placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/></objects><point key="canvasLocation" x="53" y="375"/></scene></scenes>
+          </document>
+          EOF
+
+          echo "Files prepared"
 
       - name: Build iOS IPA
         run: |
           cd MyApp
           
-          # Build directly using swiftc + xcrun (no xcode project needed!)
-          # Compile Swift source
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "SDK: $SDK_PATH"
           
+          # Compile each source
           swiftc \
             -sdk "$SDK_PATH" \
             -target arm64-apple-ios15.0 \
+            -emit-executable \
             -O \
+            -Xlinker -rpath -Xlinker /usr/lib/swift \
+            -Xlinker -sdk_version -Xlinker 18.0 \
             -framework UIKit \
             -framework WebKit \
             -framework Foundation \
             -o MyApp \
-            MyApp/AppDelegate.swift
+            MyApp/AppDelegate.swift 2>&1
           
-          echo "Binary compiled successfully!"
-          ls -la MyApp
-          file MyApp
-
-          # Create app bundle
-          mkdir -p Payload/App.app
-          cp MyApp Payload/App.app/App
-          cp MyApp/MyApp/Info.plist Payload/App.app/
-          cp MyApp/MyApp/index.html Payload/App.app/
+          echo "Compile exit code: $?"
+          ls -la MyApp 2>/dev/null || echo "Binary not created"
           
-          # Create LaunchScreen storyboard (minimal)
-          mkdir -p Payload/App.app/Base.lproj
-          cat > Payload/App.app/Base.lproj/LaunchScreen.storyboard << 'SBEOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="AppleSDK" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-              <scenes>
-                  <scene sceneID="EHf-IW-A2E">
-                      <objects>
-                          <viewController id="01J-lp-oVM" sceneMemberID="viewController">
-                              <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
-                                  <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
-                                  <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                  <color key="backgroundColor" red="0.043" green="0.055" blue="0.078" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                              </view>
-                          </viewController>
-                          <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
-                      </objects>
-                      <point key="canvasLocation" x="53" y="375"/>
-                  </scene>
-              </scenes>
-          </document>
-          SBEOF
-
-          # Create IPA
-          zip -r ../App.ipa Payload
-          
-          echo "IPA created!"
-          ls -la ../App.ipa
+          if [ -f MyApp ]; then
+            file MyApp
+            
+            # Create .app bundle
+            mkdir -p Payload/App.app
+            cp MyApp Payload/App.app/
+            cp MyApp/Info.plist Payload/App.app/
+            cp MyApp/index.html Payload/App.app/
+            cp -R MyApp/Base.lproj Payload/App.app/
+            
+            # Create IPA
+            zip -r ../App.ipa Payload
+            ls -la ../App.ipa
+          else
+            echo "BUILD FAILED"
+            exit 1
+          fi
 
       - name: Upload IPA Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: JueBie-iOS
