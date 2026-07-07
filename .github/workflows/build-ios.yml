@@ -14,114 +14,103 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Xcode Project
+      - name: Show Environment
         run: |
-          mkdir -p MyApp
-          cd MyApp
-          
-          # Create Info.plist
-          mkdir -p App
-          cat > App/Info.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-          <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
-          <key>CFBundleDisplayName</key><string>JueBie</string>
-          <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
-          <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-          <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-          <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
-          <key>CFBundlePackageType</key><string>APPL</string>
-          <key>CFBundleShortVersionString</key><string>1.0</string>
-          <key>CFBundleVersion</key><string>1</string>
-          <key>LSRequiresIPhoneOS</key><true/>
-          <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
-          <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
-          <key>UILaunchStoryboardName</key><string>LaunchScreen</string>
-          <key>UIViewControllerBasedStatusBarAppearance</key><false/>
-          <key>ITSAppUsesNonExemptEncryption</key><false/>
-          </dict></plist>
-          EOF
-          
-          # Copy AppDelegate.swift
-          cp ../ios/App/App/AppDelegate.swift App/AppDelegate.swift
-          
-          # Copy HTML
-          cp ../www/index.html App/index.html
-          
-          # Create LaunchScreen
-          mkdir -p App/Base.lproj
-          cat > App/Base.lproj/LaunchScreen.storyboard << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="AppleSDK" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-          <scenes><scene sceneID="EHf-IW-A2E"><objects><viewController id="01J-lp-oVM" sceneMemberID="viewController"><view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3"><rect key="frame" x="0.0" y="0.0" width="414" height="896"/><autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/><color key="backgroundColor" red="0.043" green="0.055" blue="0.078" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></view></viewController><placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/></objects><point key="canvasLocation" x="53" y="375"/></scene></scenes>
-          </document>
-          EOF
-          
-          # Create xcodeproj using command line
-          xcodebuild -create-xcode-project \
-            -project App.xcodeproj \
-            -name App \
-            -target App \
-            -language Swift \
-            -bundle-identifier com.juebie.radar \
-            -deployment-target 15.0 \
-            -organization-name JueBie 2>&1 || true
-          
-          # Alternative: use swift package manager
-          swift package init --type executable --name App 2>&1 || true
-          
-          # List what we have
-          ls -la
-          echo "=== Done creating project ==="
+          xcodebuild -version
+          swift --version
+          xcrun --sdk iphoneos --show-sdk-path
+          ls /Applications/Xcode*.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/ 2>/dev/null || echo "No SDKs found"
 
-      - name: Build IPA
+      - name: Build IPA with xcodebuild
         run: |
-          cd MyApp
+          cd ios/App
           
-          # Compile Swift directly
-          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "SDK: $SDK"
+          # First, fix the pbxproj by removing SPM dependencies more carefully
+          # Backup
+          cp App.xcodeproj/project.pbxproj App.xcodeproj/project.pbxproj.bak
           
-          # Compile
-          swiftc \
-            -sdk "$SDK" \
-            -target arm64-apple-ios15.0 \
-            -O \
-            -emit-executable \
-            -module-name App \
-            -Xlinker -execute \
-            -Xlinker -platform_version -Xlinker ios -Xlinker 15.0 -Xlinker 18.0 \
-            -framework UIKit \
-            -framework WebKit \
-            -framework Foundation \
-            -framework CoreGraphics \
-            -o App \
-            App/AppDelegate.swift 2>&1
+          # Use python to clean the pbxproj properly
+          python3 << 'PYEOF'
+          import re
           
-          EC=$?
-          echo "swiftc exit: $EC"
+          with open('App.xcodeproj/project.pbxproj', 'r') as f:
+              content = f.read()
           
-          if [ $EC -eq 0 ] && [ -f App ]; then
-            file App
-            
-            # Create .app bundle
-            mkdir -p Payload/App.app
-            cp App Payload/App.app/
-            cp App/Info.plist Payload/App.app/
-            cp App/index.html Payload/App.app/
-            cp -R App/Base.lproj Payload/App.app/
-            
-            # Code sign with ad-hoc (for development)
-            codesign --force --sign - --timestamp=none Payload/App.app/App 2>&1 || echo "codesign skipped"
-            
-            # Create IPA
-            cd Payload
-            zip -r ../../App.ipa App.app
-            cd ..
-            ls -la ../App.ipa
+          # Remove lines containing CapApp-SPM
+          lines = content.split('\n')
+          new_lines = []
+          skip_section = False
+          skip_count = 0
+          
+          for line in lines:
+              # Skip sections
+              if 'XCLocalSwiftPackageReference' in line:
+                  skip_section = True
+                  skip_count = 2
+                  continue
+              if 'XCSwiftPackageProductDependency' in line:
+                  skip_section = True
+                  skip_count = 2
+                  continue
+              if 'packageReferences' in line:
+                  continue
+              if 'packageProductDependencies' in line:
+                  continue
+              if 'CapApp-SPM' in line:
+                  continue
+              if 'debug.xcconfig' in line and 'baseConfigurationReference' in line:
+                  continue
+              if 'COCOAPODS' in line:
+                  # Fix the OTHER_SWIFT_FLAGS line
+                  line = '\t\t\t\tOTHER_SWIFT_FLAGS = \"$(inherited)\";'
+              
+              if skip_section:
+                  skip_count -= 1
+                  if skip_count <= 0:
+                      skip_section = False
+                  continue
+              
+              new_lines.append(line)
+          
+          with open('App.xcodeproj/project.pbxproj', 'w') as f:
+              f.write('\n'.join(new_lines))
+          
+          print("pbxproj cleaned")
+          PYEOF
+          
+          # List available targets/schemes
+          echo "=== Available targets ==="
+          xcodebuild -project App.xcodeproj -list 2>&1 || true
+          
+          # Build
+          xcodebuild \
+            -project App.xcodeproj \
+            -target App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO \
+            2>&1 | tail -50
+          
+          echo "Build exit code: ${PIPESTATUS[0]}"
+          
+          # Find the .app
+          APP_PATH=$(find build -name "*.app" -type d | head -1)
+          echo "App path: $APP_PATH"
+          
+          if [ -n "$APP_PATH" ]; then
+            mkdir -p Payload
+            cp -R "$APP_PATH" Payload/
+            zip -r ../../App.ipa Payload
+            ls -la ../../App.ipa
           else
-            echo "Compilation failed!"
+            echo "No .app found!"
+            find build -type d | head -20
             exit 1
           fi
 
