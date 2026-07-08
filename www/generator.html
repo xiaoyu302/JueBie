@@ -1,0 +1,194 @@
+/**
+ * 诀别 - 卡密生成器（独立页面）
+ * 用于生成与 keygen.js 验证系统兼容的卡密
+ * 在浏览器中打开此文件即可使用
+ */
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>诀别 - 卡密生成器</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif; }
+        body { background:#0b0e14; color:#c8d0dc; display:flex; justify-content:center; align-items:center; min-height:100vh; padding:16px; }
+        .container { max-width:500px; width:100%; background:#131a24; border-radius:24px; padding:28px 24px; border:1px solid #2a3645; }
+        h1 { font-size:22px; color:#e8edf5; text-align:center; margin-bottom:4px; }
+        h1 span { color:#ff4d6d; }
+        .sub { text-align:center; font-size:12px; color:#5a6f88; margin-bottom:24px; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; font-size:13px; color:#8899aa; margin-bottom:6px; font-weight:600; }
+        .form-group input, .form-group select {
+            width:100%; padding:12px 14px; background:#0c121c; border:1px solid #2a3645;
+            border-radius:12px; color:#e8edf5; font-size:15px; outline:none;
+            font-family:'SF Mono','Menlo',monospace;
+            transition:border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color:#ff4d6d; }
+        .form-row { display:flex; gap:12px; }
+        .form-row .form-group { flex:1; }
+        .btn {
+            width:100%; padding:14px; border:none; border-radius:14px; font-size:15px; font-weight:700;
+            cursor:pointer; transition:all 0.2s; margin-top:8px;
+        }
+        .btn-generate { background:linear-gradient(135deg,#ff4d6d,#ff758c); color:#fff; }
+        .btn-generate:active { transform:scale(0.97); opacity:0.9; }
+        .btn-export { background:#1c2633; color:#a0b3c9; border:1px solid #2a3645; }
+        .result { margin-top:20px; }
+        .result h3 { font-size:14px; color:#8899aa; margin-bottom:10px; }
+        .card-list { max-height:400px; overflow-y:auto; }
+        .card-item {
+            background:#0f1722; border:1px solid #1e2c3a; border-radius:12px; padding:14px;
+            margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;
+        }
+        .card-key { font-family:'SF Mono','Menlo',monospace; font-size:16px; color:#e8edf5; letter-spacing:1px; }
+        .card-info { font-size:11px; color:#5a6f88; text-align:right; }
+        .card-info .days { color:#ff4d6d; font-weight:600; }
+        .card-info .code { color:#4cd9a0; font-family:'SF Mono','Menlo',monospace; }
+        .msg { text-align:center; font-size:13px; padding:8px 12px; border-radius:8px; margin-top:10px; }
+        .msg.success { background:#152d20; color:#4cd9a0; border:1px solid #204a35; }
+        .msg.info { background:#1a2535; color:#8899aa; border:1px solid #2a3645; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1><span>诀</span>别 · 卡密生成器</h1>
+    <div class="sub">生成与 App 内置验证系统兼容的卡密</div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>生成数量</label>
+            <select id="count">
+                <option value="1">1 张</option>
+                <option value="5">5 张</option>
+                <option value="7" selected>7 张</option>
+                <option value="10">10 张</option>
+                <option value="20">20 张</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>有效期（天）</label>
+            <select id="days">
+                <option value="1" selected>1 天</option>
+                <option value="3">3 天</option>
+                <option value="7">7 天</option>
+                <option value="15">15 天</option>
+                <option value="30">30 天</option>
+                <option value="90">90 天</option>
+                <option value="180">180 天</option>
+                <option value="365">365 天</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="btn btn-generate" id="btnGenerate">⚡ 生成卡密</button>
+    <button class="btn btn-export" id="btnExport" style="display:none;">📋 复制全部卡密</button>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script src="keygen.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    let generatedCards = [];
+
+    function formatDate(date) {
+        let y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
+        let h=String(date.getHours()).padStart(2,'0'),min=String(date.getMinutes()).padStart(2,'0');
+        return y+'-'+m+'-'+d+' '+h+':'+min;
+    }
+
+    function generateCards(count, days) {
+        let cards = [];
+        let now = new Date();
+        let expireDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+        for (let i = 0; i < count; i++) {
+            let serial = Math.floor(Math.random() * 0xFFFF);
+            let cardKey = window.JueBieLicense.generateCard(serial, days);
+            let checkCode = window.JueBieLicense.generateCheckCode(cardKey);
+
+            // 验证卡密有效性
+            let valid = window.JueBieLicense.validate(cardKey);
+            if (!valid.valid) {
+                i--; // 重新生成
+                continue;
+            }
+
+            cards.push({
+                index: i + 1,
+                cardKey: cardKey,
+                checkCode: checkCode,
+                days: days,
+                generatedAt: formatDate(now),
+                expiresAt: formatDate(expireDate),
+                valid: true
+            });
+        }
+        return cards;
+    }
+
+    function renderCards() {
+        let resultDiv = document.getElementById('result');
+        let html = '<h3>已生成 ' + generatedCards.length + ' 张卡密</h3><div class="card-list">';
+
+        for (let card of generatedCards) {
+            html += '<div class="card-item">';
+            html += '<div class="card-key">' + card.cardKey + '</div>';
+            html += '<div class="card-info">';
+            html += '<span class="days">' + card.days + '天</span> · ';
+            html += '<span class="code">' + card.checkCode + '</span>';
+            html += '</div></div>';
+        }
+
+        html += '</div>';
+        resultDiv.innerHTML = html;
+
+        document.getElementById('btnExport').style.display = 'block';
+    }
+
+    document.getElementById('btnGenerate').addEventListener('click', function() {
+        let count = parseInt(document.getElementById('count').value);
+        let days = parseInt(document.getElementById('days').value);
+        generatedCards = generateCards(count, days);
+        renderCards();
+
+        // 自动复制
+        let text = '';
+        for (let c of generatedCards) {
+            text += c.cardKey + '\t' + c.checkCode + '\t' + c.days + '天\t' + c.expiresAt + '\n';
+        }
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                let msg = document.createElement('div');
+                msg.className = 'msg success';
+                msg.textContent = '✅ 卡密已自动复制到剪贴板';
+                document.getElementById('result').appendChild(msg);
+                setTimeout(function() { msg.remove(); }, 2000);
+            });
+        }
+    });
+
+    document.getElementById('btnExport').addEventListener('click', function() {
+        let text = '诀别 - 卡密列表\n' + '='.repeat(50) + '\n\n';
+        for (let c of generatedCards) {
+            text += c.index + '. ' + c.cardKey + '\n';
+            text += '   校验码: ' + c.checkCode + '  时长: ' + c.days + '天  到期: ' + c.expiresAt + '\n\n';
+        }
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                let msg = document.createElement('div');
+                msg.className = 'msg info';
+                msg.textContent = '✅ 已复制到剪贴板（含校验码）';
+                document.getElementById('result').appendChild(msg);
+                setTimeout(function() { msg.remove(); }, 2000);
+            });
+        }
+    });
+
+})();
+</script>
+</body>
+</html>
