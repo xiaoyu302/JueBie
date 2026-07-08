@@ -6,187 +6,870 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="诀别">
-    <title>诀别</title>
+    <title>诀别 · 增强版</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background: #0b0e14; color: #c8d0dc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; -webkit-user-select: none; user-select: none; }
-        .app-container { max-width: 420px; width: 100%; background: #131a24; border-radius: 32px; padding: 20px 18px 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #2a3645; }
-        .status-bar { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #8899aa; padding-bottom: 12px; border-bottom: 1px solid #1f2a36; margin-bottom: 16px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body {
+            background: #0b0e14;
+            color: #c8d0dc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .app-container {
+            max-width: 420px; width: 100%;
+            background: #131a24; border-radius: 32px; padding: 20px 18px 28px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 60px rgba(255,77,109,0.03);
+            border: 1px solid #2a3645; transition: all 0.3s ease;
+        }
+        .status-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 13px; color: #8899aa; padding-bottom: 12px;
+            border-bottom: 1px solid #1f2a36; margin-bottom: 16px;
+        }
         .status-bar .time { color: #a0b3c9; font-weight: 600; }
-        .status-bar .badge { background: #1f8b4c; color: #fff; padding: 2px 12px; border-radius: 40px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .status-bar .sys-info { font-size: 10px; color: #5a6f88; background: #1a2635; padding: 2px 10px; border-radius: 40px; }
+        .status-bar .badge {
+            background: #1f8b4c; color: #fff; padding: 2px 12px;
+            border-radius: 40px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+            animation: pulse-badge 2s infinite;
+        }
+        @keyframes pulse-badge { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+        .header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;
+        }
         .header .logo-area { display: flex; align-items: center; gap: 10px; }
-        .header .logo-area .brand { font-weight: 700; font-size: 22px; color: #e8edf5; letter-spacing: 2px; }
+        .header .logo-area .brand {
+            font-weight: 800; font-size: 24px; color: #e8edf5; letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(255,77,109,0.3);
+        }
         .header .logo-area .brand span { color: #ff4d6d; }
-        .header .license { background: #1e2a3a; padding: 4px 12px; border-radius: 40px; font-size: 11px; color: #7a8fa8; border: 1px solid #2f4055; }
+        .header .version-tag {
+            background: linear-gradient(135deg, #ff4d6d, #ff758c); color: #fff;
+            padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .header .license {
+            background: #1e2a3a; padding: 4px 12px 4px 10px; border-radius: 40px;
+            font-size: 11px; color: #7a8fa8; border: 1px solid #2f4055; cursor: pointer;
+            transition: all 0.3s ease;
+        }
         .header .license .active { color: #4cd9a0; font-weight: 600; }
-        .game-selector { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-        .game-selector .game-btn { background: #1c2633; border: none; color: #7a8fa8; padding: 6px 18px; border-radius: 40px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
-        .game-selector .game-btn.active { background: #1f2b3d; color: #e0e8f2; border-color: #4a9eff; box-shadow: 0 0 12px rgba(74, 158, 255, 0.08); }
-        .kernel-status { display: flex; align-items: center; gap: 12px; background: #101a24; padding: 10px 16px; border-radius: 60px; margin-bottom: 16px; border: 1px solid #25313f; }
-        .kernel-status .dot { width: 10px; height: 10px; border-radius: 50%; background: #4cd9a0; box-shadow: 0 0 8px #4cd9a080; }
+        .header .license.expiring { border-color: #ffaa00; }
+        .header .license.expiring .active { color: #ffaa00; }
+        .header .license.expired { border-color: #ff4d6d; }
+        .header .license.expired .active { color: #ff4d6d; }
+
+        /* ===== 卡密激活弹窗 ===== */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.75); z-index: 1000;
+            justify-content: center; align-items: center; padding: 20px;
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        }
+        .modal-overlay.show { display: flex; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        .modal-box {
+            background: #131a24; border-radius: 20px; padding: 24px 20px;
+            max-width: 380px; width: 100%; border: 1px solid #2a3645;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        .modal-box h2 {
+            font-size: 18px; color: #e8edf5; margin-bottom: 4px; text-align: center;
+        }
+        .modal-box .subtitle {
+            font-size: 12px; color: #5a6f88; text-align: center; margin-bottom: 20px;
+        }
+        .modal-box .input-group { margin-bottom: 14px; }
+        .modal-box .input-group label {
+            display: block; font-size: 12px; color: #8899aa; margin-bottom: 6px; font-weight: 600;
+        }
+        .modal-box .input-group input {
+            width: 100%; padding: 12px 14px; background: #0c121c; border: 1px solid #2a3645;
+            border-radius: 12px; color: #e8edf5; font-size: 15px; outline: none;
+            font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+            letter-spacing: 1px; transition: all 0.2s ease;
+        }
+        .modal-box .input-group input:focus { border-color: #ff4d6d; box-shadow: 0 0 0 3px rgba(255,77,109,0.1); }
+        .modal-box .input-group input::placeholder { color: #3a5068; letter-spacing: 0; }
+        .modal-box .input-row { display: flex; gap: 10px; }
+        .modal-box .input-row .input-group { flex: 1; }
+        .modal-box .btn-row { display: flex; gap: 10px; margin-top: 18px; }
+        .modal-box .btn-row button {
+            flex: 1; padding: 12px 0; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;
+        }
+        .modal-box .btn-row .btn-activate {
+            background: linear-gradient(135deg, #ff4d6d, #ff758c); color: #fff;
+        }
+        .modal-box .btn-row .btn-activate:active { transform: scale(0.96); opacity: 0.9; }
+        .modal-box .btn-row .btn-cancel {
+            background: #1c2633; color: #8899aa; border: 1px solid #2a3645;
+        }
+        .modal-box .btn-row .btn-cancel:active { background: #243042; }
+        .modal-box .msg {
+            text-align: center; font-size: 13px; margin-top: 12px; padding: 8px 12px;
+            border-radius: 8px; display: none;
+        }
+        .modal-box .msg.show { display: block; }
+        .modal-box .msg.error { background: #2d1520; color: #ff6b8a; border: 1px solid #4a2035; }
+        .modal-box .msg.success { background: #152d20; color: #4cd9a0; border: 1px solid #204a35; }
+        .modal-box .msg.info { background: #1a2535; color: #8899aa; border: 1px solid #2a3645; }
+
+        /* 授权信息显示 */
+        .license-info {
+            background: #0f1722; border-radius: 12px; padding: 10px 14px; margin-top: 14px;
+            border: 1px solid #1e2c3a; display: none;
+        }
+        .license-info.show { display: block; }
+        .license-info .li-row {
+            display: flex; justify-content: space-between; font-size: 12px;
+            padding: 4px 0; color: #8899aa;
+        }
+        .license-info .li-row .li-val { color: #c8d0dc; font-weight: 600; }
+        .license-info .li-row .li-val.green { color: #4cd9a0; }
+        .license-info .li-row .li-val.red { color: #ff4d6d; }
+        .license-info .li-row .li-val.yellow { color: #ffaa00; }
+
+        .game-selector {
+            display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .game-selector .game-btn {
+            background: #1c2633; border: none; color: #7a8fa8; padding: 8px 18px;
+            border-radius: 40px; font-size: 13px; font-weight: 500; cursor: pointer;
+            border: 1px solid transparent; transition: all 0.3s ease;
+        }
+        .game-selector .game-btn:active { background: #243042; color: #b0c0d4; }
+        .game-selector .game-btn.active {
+            background: linear-gradient(135deg, #1f2b3d, #2a1a30); color: #e0e8f2;
+            border-color: #ff4d6d; box-shadow: 0 0 16px rgba(255,77,109,0.12);
+        }
+        .kernel-status {
+            display: flex; align-items: center; gap: 12px;
+            background: #101a24; padding: 12px 16px; border-radius: 60px;
+            margin-bottom: 16px; border: 1px solid #25313f; transition: all 0.3s ease;
+        }
+        .kernel-status.connected { border-color: #1f8b4c; box-shadow: 0 0 20px rgba(31,139,76,0.08); }
+        .kernel-status .dot {
+            width: 12px; height: 12px; border-radius: 50%; background: #4cd9a0;
+            box-shadow: 0 0 12px #4cd9a080; animation: kernel-pulse 1.5s infinite;
+        }
+        @keyframes kernel-pulse { 0%,100%{box-shadow:0 0 8px #4cd9a080;} 50%{box-shadow:0 0 20px #4cd9a0c0;} }
         .kernel-status .label { font-size: 13px; color: #a0b3c9; flex: 1; }
         .kernel-status .label strong { color: #e0e8f2; }
-        .kernel-status .pid { font-size: 12px; color: #5a6f88; background: #1a2635; padding: 2px 12px; border-radius: 40px; }
-        .radar-wrapper { position: relative; background: #0c121c; border-radius: 24px; padding: 12px; border: 1px solid #25313f; margin-bottom: 16px; }
+        .kernel-status .pid {
+            font-size: 12px; color: #5a6f88; background: #1a2635; padding: 2px 12px;
+            border-radius: 40px; font-family: 'SF Mono', 'Menlo', monospace;
+        }
+        .radar-wrapper {
+            position: relative; background: #0c121c; border-radius: 24px; padding: 12px;
+            border: 1px solid #25313f; margin-bottom: 16px; transition: all 0.3s ease;
+        }
+        .radar-wrapper.active { border-color: #ff4d6d; box-shadow: 0 0 30px rgba(255,77,109,0.06); }
         .radar-wrapper canvas { display: block; width: 100%; aspect-ratio: 1/1; border-radius: 16px; background: #0a0f17; touch-action: none; }
-        .footer-stats { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #5a6f88; padding-top: 8px; border-top: 1px solid #1a2635; margin-top: 4px; }
+        .radar-overlay {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; pointer-events: none;
+        }
+        .radar-overlay .compass { font-size: 11px; color: #3a5068; font-weight: 700; }
+        .enhanced-panel {
+            background: #0f1722; border-radius: 16px; padding: 14px 16px;
+            margin-bottom: 16px; border: 1px solid #1e2c3a; display: none;
+        }
+        .enhanced-panel.visible { display: block; animation: slideDown 0.3s ease; }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
+        .enhanced-panel h3 { font-size: 13px; color: #ff4d6d; margin-bottom: 10px; letter-spacing: 1px; font-weight: 700; }
+        .enhanced-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .enhanced-item {
+            background: #131d2a; border-radius: 10px; padding: 10px 12px;
+            border: 1px solid #1e2c3a; cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .enhanced-item:active { background: #192638; border-color: #2a3f55; }
+        .enhanced-item .e-icon { font-size: 18px; width: 24px; text-align: center; }
+        .enhanced-item .e-label { font-size: 11px; color: #8899aa; }
+        .enhanced-item .e-value { font-size: 14px; color: #c8d0dc; font-weight: 600; }
+        .footer-stats {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; color: #5a6f88; padding-top: 8px;
+            border-top: 1px solid #1a2635; margin-top: 4px;
+        }
         .footer-stats .stat-item { display: flex; align-items: center; gap: 6px; }
-        .footer-stats .stat-item .num { color: #c8d0dc; font-weight: 600; }
-        .action-bar { display: flex; gap: 10px; margin-top: 6px; }
-        .action-bar .btn { flex: 1; background: #1c2633; border: none; color: #a0b3c9; padding: 12px 0; border-radius: 60px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #2a3645; transition: all 0.2s; text-align: center; }
-        .action-bar .btn.primary { background: #1f8b4c; border-color: #2aaf6a; color: #fff; }
+        .footer-stats .stat-item .num { color: #c8d0dc; font-weight: 600; font-family: 'SF Mono', 'Menlo', monospace; }
+        .action-bar { display: flex; gap: 10px; margin-top: 8px; }
+        .action-bar .btn {
+            flex: 1; background: #1c2633; border: none; color: #a0b3c9;
+            padding: 12px 0; border-radius: 60px; font-size: 14px; font-weight: 600;
+            cursor: pointer; border: 1px solid #2a3645; transition: all 0.3s ease; text-align: center;
+        }
+        .action-bar .btn:active { background: #243042; border-color: #3a4a5d; }
+        .action-bar .btn.primary {
+            background: linear-gradient(135deg, #1f8b4c, #1a7a40); border-color: #2aaf6a; color: #fff;
+        }
+        .action-bar .btn.primary:active {
+            background: linear-gradient(135deg, #25a35a, #1f8b4c); box-shadow: 0 0 20px rgba(31,139,76,0.2);
+        }
         .action-bar .btn.primary .sub { font-weight: 400; font-size: 11px; color: #8cd4b0; }
-        @media (max-width: 480px) { .app-container { padding: 16px 12px 20px; } .header .logo-area .brand { font-size: 17px; } }
+        .action-bar .btn.danger { background: #2d1520; border-color: #4a2035; color: #ff6b8a; }
+        .action-bar .btn.danger:active { background: #3a1a2a; border-color: #5a2840; }
+        .sys-notice {
+            text-align: center; font-size: 10px; color: #3a5068; margin-top: 10px; letter-spacing: 0.5px;
+        }
+        .sys-notice span { color: #ff4d6d; font-weight: 600; }
+
+        /* 未激活时主界面模糊 */
+        .app-main { transition: filter 0.4s ease, opacity 0.4s ease; }
+        .app-main.locked { filter: blur(6px); opacity: 0.4; pointer-events: none; }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="status-bar">
-        <span class="time" id="statusTime">03:02</span>
-        <span class="badge">ONLINE</span>
-    </div>
-    <div class="header">
-        <div class="logo-area">
-            <span class="brand"><span>诀</span>别</span>
+
+<!-- ========== 卡密激活弹窗 ========== -->
+<div class="modal-overlay" id="activateModal">
+    <div class="modal-box">
+        <h2>🔑 激活授权</h2>
+        <div class="subtitle" id="modalSubtitle">请输入您的卡密以激活应用</div>
+
+        <div class="input-group">
+            <label>卡密</label>
+            <input type="text" id="cardInput" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19" autocomplete="off" autocorrect="off" autocapitalize="characters">
         </div>
-        <div class="license">
-            <span class="active">●</span> LICENSE ACTIVE
+
+        <div class="input-row">
+            <div class="input-group">
+                <label>校验码（选填）</label>
+                <input type="text" id="checkCodeInput" placeholder="6位码" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters">
+            </div>
         </div>
-    </div>
-    <div class="game-selector">
-        <button class="game-btn">和平精英</button>
-        <button class="game-btn active">三角洲</button>
-    </div>
-    <div class="kernel-status">
-        <span class="dot"></span>
-        <span class="label"><strong>KERNEL</strong> · IDLE</span>
-        <span class="pid">PID: 0x7A3F</span>
-    </div>
-    <div class="radar-wrapper">
-        <canvas id="radarCanvas" width="600" height="600"></canvas>
-    </div>
-    <div class="footer-stats">
-        <span class="stat-item">TARGET <span class="num" id="targetCount">0</span></span>
-        <span class="stat-item">UPDATE <span class="num" id="updateRate">0</span>ms</span>
-        <span class="stat-item">CONNECTED</span>
-    </div>
-    <div class="action-bar">
-        <button class="btn">SETTINGS</button>
-        <button class="btn primary" id="toggleSimBtn">
-            <span id="simBtnText">PAUSE</span>
-            <div class="sub">SIM DATA</div>
-        </button>
+
+        <div class="btn-row">
+            <button class="btn-cancel" id="btnCancelActivate">取消</button>
+            <button class="btn-activate" id="btnActivate">⚡ 立即激活</button>
+        </div>
+
+        <div class="msg" id="activateMsg"></div>
+
+        <div class="license-info" id="licenseInfoBox">
+            <div class="li-row"><span>状态</span><span class="li-val green" id="liStatus">-</span></div>
+            <div class="li-row"><span>到期时间</span><span class="li-val" id="liExpires">-</span></div>
+            <div class="li-row"><span>剩余</span><span class="li-val" id="liRemaining">-</span></div>
+            <div class="li-row"><span>已激活卡密</span><span class="li-val" id="liCards">-</span></div>
+            <div class="li-row"><span>设备标识</span><span class="li-val" id="liDevice" style="font-size:10px;">-</span></div>
+        </div>
     </div>
 </div>
+
+<!-- ========== 主界面 ========== -->
+<div class="app-container">
+    <div class="app-main" id="appMain">
+        <div class="status-bar">
+            <span class="time" id="statusTime">--:--:--</span>
+            <span class="sys-info">iOS 26.0+</span>
+            <span class="badge" id="statusBadge">● 在线</span>
+        </div>
+
+        <div class="header">
+            <div class="logo-area">
+                <span class="brand"><span>诀</span>别</span>
+                <span class="version-tag">V3 ENHANCED</span>
+            </div>
+            <div class="license" id="licenseBadge">
+                <span class="active" id="licenseDot">●</span> <span id="licenseText">点击激活</span>
+            </div>
+        </div>
+
+        <div class="game-selector" id="gameSelector">
+            <button class="game-btn" data-game="pubg">和平精英</button>
+            <button class="game-btn active" data-game="delta">三角洲行动</button>
+            <button class="game-btn" data-game="codm">CODM</button>
+            <button class="game-btn" data-game="cf">穿越火线</button>
+        </div>
+
+        <div class="kernel-status connected" id="kernelStatus">
+            <span class="dot"></span>
+            <span class="label"><strong>KERNEL</strong> · <span id="kernelState">READY</span></span>
+            <span class="pid" id="kernelPid">PID: 0x7A3F</span>
+        </div>
+
+        <div class="enhanced-panel visible" id="enhancedPanel">
+            <h3>⚡ 增强功能</h3>
+            <div class="enhanced-grid">
+                <div class="enhanced-item" id="aimAssist">
+                    <span class="e-icon">🎯</span>
+                    <div><div class="e-label">辅助瞄准</div><div class="e-value" id="aimStatus">开启</div></div>
+                </div>
+                <div class="enhanced-item" id="espToggle">
+                    <span class="e-icon">👁</span>
+                    <div><div class="e-label">透视增强</div><div class="e-value" id="espStatus">开启</div></div>
+                </div>
+                <div class="enhanced-item" id="noRecoil">
+                    <span class="e-icon">🔫</span>
+                    <div><div class="e-label">无后坐力</div><div class="e-value" id="recoilStatus">开启</div></div>
+                </div>
+                <div class="enhanced-item" id="speedBoost">
+                    <span class="e-icon">⚡</span>
+                    <div><div class="e-label">加速模式</div><div class="e-value" id="speedStatus">关闭</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="radar-wrapper active" id="radarWrapper">
+            <div class="radar-overlay">
+                <span class="compass">N</span><span class="compass" style="color:#ff4d6d">NE</span>
+                <span class="compass">E</span><span class="compass" style="color:#ff4d6d">SE</span>
+            </div>
+            <canvas id="radarCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <div class="footer-stats">
+            <span class="stat-item">🎯 目标 <span class="num" id="targetCount">0</span></span>
+            <span class="stat-item">📡 FPS <span class="num" id="updateRate">0</span></span>
+            <span class="stat-item" id="connectionStatus">🔗 已连接</span>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn" id="settingsBtn">⚙ 设置</button>
+            <button class="btn primary" id="toggleSimBtn">
+                <span id="simBtnText">⏸ 暂停</span>
+                <div class="sub">模拟数据</div>
+            </button>
+            <button class="btn danger" id="resetBtn">↻ 重置</button>
+        </div>
+
+        <div class="sys-notice">
+            系统兼容 <span>iOS 26.0 - 27.x</span> · 当前适配最高 <span>26.0.1</span> · 内核增强版
+        </div>
+    </div>
+</div>
+
+<script src="keygen.js"></script>
 <script>
 (function() {
     'use strict';
+
+    // ============================================================
+    //  0. 卡密激活系统初始化
+    // ============================================================
+    const modal = document.getElementById('activateModal');
+    const modalSubtitle = document.getElementById('modalSubtitle');
+    const cardInput = document.getElementById('cardInput');
+    const checkCodeInput = document.getElementById('checkCodeInput');
+    const btnActivate = document.getElementById('btnActivate');
+    const btnCancelActivate = document.getElementById('btnCancelActivate');
+    const activateMsg = document.getElementById('activateMsg');
+    const licenseBadge = document.getElementById('licenseBadge');
+    const licenseDot = document.getElementById('licenseDot');
+    const licenseText = document.getElementById('licenseText');
+    const appMain = document.getElementById('appMain');
+    const licenseInfoBox = document.getElementById('licenseInfoBox');
+
+    let licenseStatus = null;
+
+    // 显示消息
+    function showMsg(text, type) {
+        activateMsg.textContent = text;
+        activateMsg.className = 'msg ' + type + ' show';
+        if (type === 'success' || type === 'error') {
+            setTimeout(function() {
+                activateMsg.className = 'msg';
+            }, 3000);
+        }
+    }
+
+    // 更新授权徽章显示
+    function updateLicenseBadge() {
+        if (!licenseStatus || !licenseStatus.activated) {
+            licenseBadge.className = 'license expired';
+            licenseDot.textContent = '●';
+            licenseDot.className = 'active';
+            licenseText.textContent = '未激活';
+            return;
+        }
+
+        let remainingDays = licenseStatus.remainingDays;
+        let remainingHours = licenseStatus.remainingHours;
+
+        if (remainingDays <= 0) {
+            licenseBadge.className = 'license expired';
+            licenseDot.textContent = '●';
+            licenseDot.className = 'active';
+            licenseText.textContent = '已过期';
+        } else if (remainingDays <= 3) {
+            licenseBadge.className = 'license expiring';
+            licenseDot.textContent = '●';
+            licenseDot.className = 'active';
+            licenseText.textContent = remainingDays + '天到期';
+        } else {
+            licenseBadge.className = 'license';
+            licenseDot.textContent = '●';
+            licenseDot.className = 'active';
+            licenseText.textContent = remainingDays + '天剩余';
+        }
+    }
+
+    // 更新授权信息面板
+    function updateLicenseInfoBox() {
+        if (!licenseStatus || !licenseStatus.activated) {
+            licenseInfoBox.classList.remove('show');
+            return;
+        }
+        licenseInfoBox.classList.add('show');
+
+        let remainingDays = licenseStatus.remainingDays;
+        let remainingHours = licenseStatus.remainingHours;
+        let expiresAt = licenseStatus.expiresAt;
+        let expireStr = '';
+        if (expiresAt) {
+            let d = new Date(expiresAt);
+            expireStr = d.getFullYear() + '-' +
+                String(d.getMonth()+1).padStart(2,'0') + '-' +
+                String(d.getDate()).padStart(2,'0') + ' ' +
+                String(d.getHours()).padStart(2,'0') + ':' +
+                String(d.getMinutes()).padStart(2,'0');
+        }
+
+        let statusEl = document.getElementById('liStatus');
+        let remainingEl = document.getElementById('liRemaining');
+
+        if (remainingDays <= 0) {
+            statusEl.textContent = '已过期';
+            statusEl.className = 'li-val red';
+            remainingEl.textContent = '0天';
+            remainingEl.className = 'li-val red';
+        } else if (remainingDays <= 3) {
+            statusEl.textContent = '即将过期';
+            statusEl.className = 'li-val yellow';
+            remainingEl.textContent = remainingDays + '天 (' + remainingHours + '小时)';
+            remainingEl.className = 'li-val yellow';
+        } else {
+            statusEl.textContent = '正常';
+            statusEl.className = 'li-val green';
+            remainingEl.textContent = remainingDays + '天';
+            remainingEl.className = 'li-val green';
+        }
+
+        document.getElementById('liExpires').textContent = expireStr;
+        document.getElementById('liCards').textContent = (licenseStatus.totalCards || 0) + ' 张';
+        document.getElementById('liDevice').textContent = window.JueBieLicense.getDeviceFingerprint();
+    }
+
+    // 打开激活弹窗
+    function openActivateModal() {
+        modal.classList.add('show');
+        cardInput.value = '';
+        checkCodeInput.value = '';
+        activateMsg.className = 'msg';
+        modalSubtitle.textContent = '请输入您的卡密以激活应用';
+
+        // 刷新授权信息
+        licenseStatus = window.JueBieLicense.check();
+        updateLicenseInfoBox();
+        if (licenseStatus && licenseStatus.activated) {
+            modalSubtitle.textContent = '当前已激活，输入新卡密可叠加时长';
+        }
+        setTimeout(function() { cardInput.focus(); }, 300);
+    }
+
+    // 关闭激活弹窗
+    function closeActivateModal() {
+        modal.classList.remove('show');
+    }
+
+    // 执行激活
+    function doActivate() {
+        let cardKey = cardInput.value.trim().toUpperCase();
+        let checkCode = checkCodeInput.value.trim().toUpperCase();
+
+        if (!cardKey) {
+            showMsg('请输入卡密', 'error');
+            return;
+        }
+
+        // 自动格式化：去掉连字符后重新插入
+        let raw = cardKey.replace(/-/g, '');
+        if (raw.length === 16 && !cardKey.includes('-')) {
+            cardKey = raw.substring(0,4) + '-' + raw.substring(4,8) + '-' + raw.substring(8,12) + '-' + raw.substring(12,16);
+            cardInput.value = cardKey;
+        }
+
+        // 先做格式验证
+        let validateResult = window.JueBieLicense.validate(cardKey, checkCode || null);
+        if (!validateResult.valid) {
+            showMsg(validateResult.error, 'error');
+            // 震动反馈
+            cardInput.style.borderColor = '#ff4d6d';
+            setTimeout(function() { cardInput.style.borderColor = ''; }, 1500);
+            return;
+        }
+
+        // 激活
+        btnActivate.textContent = '激活中...';
+        btnActivate.disabled = true;
+
+        let result = window.JueBieLicense.activate(cardKey);
+        btnActivate.textContent = '⚡ 立即激活';
+        btnActivate.disabled = false;
+
+        if (result.valid) {
+            showMsg(result.message, 'success');
+            cardInput.style.borderColor = '#4cd9a0';
+            cardInput.value = '';
+            checkCodeInput.value = '';
+
+            // 更新状态
+            licenseStatus = window.JueBieLicense.check();
+            updateLicenseBadge();
+            updateLicenseInfoBox();
+            appMain.classList.remove('locked');
+            modalSubtitle.textContent = '激活成功！';
+
+            // 延迟关闭
+            setTimeout(function() {
+                closeActivateModal();
+            }, 1500);
+        } else {
+            showMsg(result.error || '激活失败', 'error');
+        }
+    }
+
+    // 事件绑定
+    btnActivate.addEventListener('click', doActivate);
+    btnCancelActivate.addEventListener('click', closeActivateModal);
+    licenseBadge.addEventListener('click', openActivateModal);
+
+    // 回车激活
+    cardInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === 'Go') {
+            e.preventDefault();
+            if (checkCodeInput.value.trim()) {
+                doActivate();
+            } else {
+                checkCodeInput.focus();
+            }
+        }
+    });
+    checkCodeInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === 'Go') {
+            e.preventDefault();
+            doActivate();
+        }
+    });
+
+    // 点击遮罩关闭
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeActivateModal();
+    });
+
+    // 自动格式化输入
+    cardInput.addEventListener('input', function() {
+        let val = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        if (val.length > 4) val = val.substring(0,4) + '-' + val.substring(4);
+        if (val.length > 9) val = val.substring(0,9) + '-' + val.substring(9);
+        if (val.length > 14) val = val.substring(0,14) + '-' + val.substring(14);
+        this.value = val.substring(0, 19);
+    });
+
+    checkCodeInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().substring(0, 6);
+    });
+
+    // ============================================================
+    //  1. DOM 引用
+    // ============================================================
     const canvas = document.getElementById('radarCanvas');
     const ctx = canvas.getContext('2d');
     const targetCountEl = document.getElementById('targetCount');
     const updateRateEl = document.getElementById('updateRate');
     const statusTimeEl = document.getElementById('statusTime');
     const simBtnText = document.getElementById('simBtnText');
-    const CONFIG = { radarRadius: 260, playerCount: 8, moveSpeed: 0.6, updateInterval: 50, maxDistance: 240 };
-    let isRunning = true;
-    let frameCount = 0;
-    let lastTimestamp = performance.now();
-    let players = [];
+    const kernelState = document.getElementById('kernelState');
+    const kernelPid = document.getElementById('kernelPid');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const statusBadge = document.getElementById('statusBadge');
+    const radarWrapper = document.getElementById('radarWrapper');
+    const kernelStatusEl = document.getElementById('kernelStatus');
+
+    const ENHANCED = { aimAssist: true, esp: true, noRecoil: true, speedBoost: false };
+
+    const CONFIG = {
+        radarRadius: 260, playerCount: 12, enemyRatio: 0.65,
+        moveSpeed: 0.8, updateInterval: 50, maxDistance: 240,
+        scanSpeed: 4000, particleCount: 30,
+    };
+
+    let isRunning = true, frameCount = 0, lastTimestamp = performance.now();
+    let players = [], particles = [], scanAngle = 0, connectionQuality = 100;
 
     function generatePlayers(count) {
         const list = [];
         const centerX = 300, centerY = 300;
+        const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Ghost','Hunter','Iron','Joker','King','Lion'];
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * 2 * Math.PI;
-            const dist = 20 + Math.random() * CONFIG.maxDistance * 0.9;
-            const x = centerX + Math.cos(angle) * dist;
-            const y = centerY + Math.sin(angle) * dist;
-            const isEnemy = i % 2 === 0;
-            list.push({ id: i, x: x, y: y, vx: (Math.random() - 0.5) * CONFIG.moveSpeed * 1.2, vy: (Math.random() - 0.5) * CONFIG.moveSpeed * 1.2, isEnemy: isEnemy, health: 60 + Math.random() * 40, phase: Math.random() * 100 });
+            const dist = 15 + Math.random() * CONFIG.maxDistance * 0.92;
+            list.push({
+                id: i, name: names[i%12],
+                x: centerX + Math.cos(angle)*dist, y: centerY + Math.sin(angle)*dist,
+                vx: (Math.random()-0.5)*CONFIG.moveSpeed*1.3,
+                vy: (Math.random()-0.5)*CONFIG.moveSpeed*1.3,
+                isEnemy: Math.random()<CONFIG.enemyRatio,
+                health: 40+Math.random()*60,
+                shield: Math.random()>0.5?Math.random()*50:0,
+                level: Math.floor(Math.random()*5)+1,
+                phase: Math.random()*100, lastShot: 0,
+                weaponType: Math.random()>0.7?'sniper':'rifle',
+            });
         }
         return list;
     }
 
+    function generateParticles() {
+        particles = [];
+        for (let i=0;i<CONFIG.particleCount;i++) {
+            particles.push({
+                x:300+(Math.random()-0.5)*500,y:300+(Math.random()-0.5)*500,
+                vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.5,
+                life:Math.random(),maxLife:0.5+Math.random()*1.5,
+                size:0.5+Math.random()*1.5,alpha:Math.random()*0.5,
+            });
+        }
+    }
+
+    function updateParticles() {
+        for (const p of particles) {
+            p.x+=p.vx;p.y+=p.vy;p.life+=0.016;
+            if(p.life>p.maxLife){p.life=0;p.x=300+(Math.random()-0.5)*500;p.y=300+(Math.random()-0.5)*500;}
+        }
+    }
+
     function updatePlayers() {
-        const centerX = 300, centerY = 300;
-        for (const p of players) {
-            p.vx += (Math.random() - 0.5) * 0.3;
-            p.vy += (Math.random() - 0.5) * 0.3;
-            const maxSpeed = CONFIG.moveSpeed * 1.8;
-            let spd = Math.hypot(p.vx, p.vy);
-            if (spd > maxSpeed) { p.vx = (p.vx / spd) * maxSpeed; p.vy = (p.vy / spd) * maxSpeed; }
-            p.x += p.vx; p.y += p.vy;
-            const dx = p.x - centerX, dy = p.y - centerY;
-            const dist = Math.hypot(dx, dy);
-            const limit = CONFIG.maxDistance - 10;
-            if (dist > limit) { p.x = centerX + (dx / dist) * limit; p.y = centerY + (dy / dist) * limit; p.vx = -p.vx * 0.5; p.vy = -p.vy * 0.5; }
-            if (dist < 15 && Math.random() < 0.02) { p.vx += (Math.random() - 0.5) * 2; p.vy += (Math.random() - 0.5) * 2; }
+        const centerX=300,centerY=300;
+        for(const p of players){
+            const sm=ENHANCED.speedBoost?2.2:1.0;
+            p.vx+=(Math.random()-0.5)*0.4*sm;p.vy+=(Math.random()-0.5)*0.4*sm;
+            if(Math.random()<0.005){p.vx*=2.5;p.vy*=2.5;p.lastShot=performance.now();}
+            const ms=CONFIG.moveSpeed*2.0*sm;let spd=Math.hypot(p.vx,p.vy);
+            if(spd>ms){p.vx=(p.vx/spd)*ms;p.vy=(p.vy/spd)*ms;}
+            p.x+=p.vx;p.y+=p.vy;
+            const dx=p.x-centerX,dy=p.y-centerY,dist=Math.hypot(dx,dy),limit=CONFIG.maxDistance-8;
+            if(dist>limit){p.x=centerX+(dx/dist)*limit;p.y=centerY+(dy/dist)*limit;p.vx=-p.vx*0.6;p.vy=-p.vy*0.6;}
+            if(dist<12&&Math.random()<0.03){p.vx+=(Math.random()-0.5)*3;p.vy+=(Math.random()-0.5)*3;}
         }
     }
 
     function drawRadar() {
-        const w = canvas.width, h = canvas.height;
-        const cx = w / 2, cy = h / 2, radius = CONFIG.radarRadius;
-        ctx.clearRect(0, 0, w, h);
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        grad.addColorStop(0, '#141e2b'); grad.addColorStop(0.7, '#0d141f'); grad.addColorStop(1, '#05080e');
-        ctx.beginPath(); ctx.arc(cx, cy, radius, 0, 2 * Math.PI); ctx.fillStyle = grad; ctx.fill();
-        ctx.strokeStyle = '#1f2d3e'; ctx.lineWidth = 0.8;
-        for (let r = 0.25; r <= 1.0; r += 0.25) { ctx.beginPath(); ctx.arc(cx, cy, radius * r, 0, 2 * Math.PI); ctx.stroke(); }
-        ctx.strokeStyle = '#1a2638'; ctx.lineWidth = 1; ctx.setLineDash([6, 8]);
-        ctx.beginPath(); ctx.moveTo(cx - radius, cy); ctx.lineTo(cx + radius, cy); ctx.moveTo(cx, cy - radius); ctx.lineTo(cx, cy + radius); ctx.stroke(); ctx.setLineDash([]);
-        const scanAngle = (performance.now() / 6000) % 1 * 2 * Math.PI;
-        const gradScan = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        gradScan.addColorStop(0, 'rgba(74, 158, 255, 0.08)'); gradScan.addColorStop(0.7, 'rgba(74, 158, 255, 0.03)'); gradScan.addColorStop(1, 'rgba(74, 158, 255, 0)');
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, radius, scanAngle - 0.35, scanAngle); ctx.closePath(); ctx.fillStyle = gradScan; ctx.fill();
-        ctx.strokeStyle = 'rgba(74, 158, 255, 0.25)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(scanAngle) * radius, cy + Math.sin(scanAngle) * radius); ctx.stroke();
-        let visibleCount = 0;
-        for (const p of players) {
-            const dx = p.x - cx, dy = p.y - cy, dist = Math.hypot(dx, dy);
-            if (dist > radius) continue;
-            visibleCount++;
-            const isEnemy = p.isEnemy, size = isEnemy ? 12 : 10;
-            const color = isEnemy ? '#ff4d6d' : '#4cd9a0', glowColor = isEnemy ? 'rgba(255, 77, 109, 0.3)' : 'rgba(76, 217, 160, 0.3)';
-            const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 2.2);
-            glow.addColorStop(0, glowColor); glow.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.beginPath(); ctx.arc(p.x, p.y, size * 2.2, 0, 2 * Math.PI); ctx.fillStyle = glow; ctx.fill();
-            ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 14; ctx.fill(); ctx.shadowBlur = 0;
-            ctx.beginPath(); ctx.arc(p.x - size * 0.2, p.y - size * 0.2, size * 0.35, 0, 2 * Math.PI); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fill();
-            const dirAngle = Math.atan2(p.vy, p.vx);
-            const tipX = p.x + Math.cos(dirAngle) * size * 1.6, tipY = p.y + Math.sin(dirAngle) * size * 1.6;
-            ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(p.x + Math.cos(dirAngle) * size * 0.7, p.y + Math.sin(dirAngle) * size * 0.7); ctx.lineTo(tipX, tipY); ctx.stroke();
-            if (isEnemy) { ctx.fillStyle = '#ff4d6d'; ctx.font = '10px sans-serif'; ctx.fillText('▼', p.x - 6, p.y - size - 6); }
+        const w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,radius=CONFIG.radarRadius;
+        ctx.clearRect(0,0,w,h);
+        const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,radius);
+        grad.addColorStop(0,'#141e2b');grad.addColorStop(0.5,'#0f1823');
+        grad.addColorStop(0.7,'#0d141f');grad.addColorStop(1,'#05080e');
+        ctx.beginPath();ctx.arc(cx,cy,radius,0,2*Math.PI);ctx.fillStyle=grad;ctx.fill();
+        updateParticles();
+        for(const p of particles){
+            const pdx=p.x-cx,pdy=p.y-cy,pdist=Math.hypot(pdx,pdy);
+            if(pdist>radius+20)continue;
+            const lp=p.life/p.maxLife,alpha=p.alpha*(1-Math.abs(lp-0.5)*2);
+            ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,2*Math.PI);
+            ctx.fillStyle='rgba(74,158,255,'+(alpha*0.6)+')';ctx.fill();
         }
-        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI); ctx.fillStyle = '#4a9eff'; ctx.shadowColor = '#4a9eff'; ctx.shadowBlur = 16; ctx.fill(); ctx.shadowBlur = 0;
-        targetCountEl.textContent = visibleCount;
+        ctx.strokeStyle='#1f2d3e';ctx.lineWidth=0.8;
+        for(let r=0.2;r<=1.0;r+=0.2){ctx.beginPath();ctx.arc(cx,cy,radius*r,0,2*Math.PI);ctx.stroke();}
+        ctx.strokeStyle='#1a2638';ctx.lineWidth=0.8;ctx.setLineDash([6,8]);
+        ctx.beginPath();ctx.moveTo(cx-radius,cy);ctx.lineTo(cx+radius,cy);ctx.moveTo(cx,cy-radius);ctx.lineTo(cx,cy+radius);ctx.stroke();
+        ctx.strokeStyle='#131e2a';ctx.lineWidth=0.5;
+        ctx.beginPath();ctx.moveTo(cx-radius*0.707,cy-radius*0.707);ctx.lineTo(cx+radius*0.707,cy+radius*0.707);
+        ctx.moveTo(cx+radius*0.707,cy-radius*0.707);ctx.lineTo(cx-radius*0.707,cy+radius*0.707);ctx.stroke();
+        ctx.setLineDash([]);
+        scanAngle+=0.025;if(scanAngle>2*Math.PI)scanAngle-=2*Math.PI;
+        const gs=ctx.createRadialGradient(cx,cy,0,cx,cy,radius);
+        gs.addColorStop(0,'rgba(255,77,109,0.10)');gs.addColorStop(0.5,'rgba(255,77,109,0.04)');
+        gs.addColorStop(0.7,'rgba(74,158,255,0.02)');gs.addColorStop(1,'rgba(74,158,255,0)');
+        ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,radius,scanAngle-0.4,scanAngle);ctx.closePath();ctx.fillStyle=gs;ctx.fill();
+        const gl=ctx.createLinearGradient(cx,cy,cx+Math.cos(scanAngle)*radius,cy+Math.sin(scanAngle)*radius);
+        gl.addColorStop(0,'rgba(255,77,109,0.6)');gl.addColorStop(0.3,'rgba(255,77,109,0.3)');gl.addColorStop(1,'rgba(255,77,109,0)');
+        ctx.strokeStyle=gl;ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(scanAngle)*radius,cy+Math.sin(scanAngle)*radius);ctx.stroke();
+        const tx=cx+Math.cos(scanAngle)*radius,ty=cy+Math.sin(scanAngle)*radius;
+        const tg=ctx.createRadialGradient(tx,ty,0,tx,ty,12);
+        tg.addColorStop(0,'rgba(255,77,109,0.8)');tg.addColorStop(1,'rgba(255,77,109,0)');
+        ctx.beginPath();ctx.arc(tx,ty,12,0,2*Math.PI);ctx.fillStyle=tg;ctx.fill();
+        for(let i=0;i<36;i++){
+            const a=(i/36)*2*Math.PI,ir=radius-6,or=radius+2,im=i%9===0;
+            ctx.strokeStyle=im?'#3a5068':'#1a2635';ctx.lineWidth=im?1.5:0.8;
+            ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*ir,cy+Math.sin(a)*ir);
+            ctx.lineTo(cx+Math.cos(a)*(im?or:radius-2),cy+Math.sin(a)*(im?or:radius-2));ctx.stroke();
+        }
+        let vc=0,ec=0;
+        const sorted=[...players].sort((a,b)=>Math.hypot(b.x-cx,b.y-cy)-Math.hypot(a.x-cx,a.y-cy));
+        for(const p of sorted){
+            const dx=p.x-cx,dy=p.y-cy,dist=Math.hypot(dx,dy);
+            if(dist>radius)continue;vc++;if(p.isEnemy)ec++;
+            const ie=p.isEnemy,size=ie?13:10,color=ie?'#ff4d6d':'#4cd9a0',gc=ie?'rgba(255,77,109,0.35)':'rgba(76,217,160,0.35)';
+            const glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,size*2.5);
+            glow.addColorStop(0,gc);glow.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.beginPath();ctx.arc(p.x,p.y,size*2.5,0,2*Math.PI);ctx.fillStyle=glow;ctx.fill();
+            ctx.beginPath();ctx.arc(p.x,p.y,size,0,2*Math.PI);ctx.fillStyle=color;
+            ctx.shadowColor=color;ctx.shadowBlur=16;ctx.fill();ctx.shadowBlur=0;
+            if(ENHANCED.esp&&p.shield>0){
+                ctx.beginPath();ctx.arc(p.x,p.y,size+4,0,2*Math.PI*(p.shield/50));
+                ctx.strokeStyle='rgba(74,158,255,0.7)';ctx.lineWidth=2;ctx.stroke();
+            }
+            ctx.beginPath();ctx.arc(p.x-size*0.25,p.y-size*0.25,size*0.35,0,2*Math.PI);ctx.fillStyle='rgba(255,255,255,0.3)';ctx.fill();
+            const da=Math.atan2(p.vy,p.vx);
+            ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=2;
+            ctx.beginPath();ctx.moveTo(p.x+Math.cos(da)*size*0.6,p.y+Math.sin(da)*size*0.6);
+            ctx.lineTo(p.x+Math.cos(da)*size*1.8,p.y+Math.sin(da)*size*1.8);ctx.stroke();
+            if(ie){
+                ctx.fillStyle='#ff4d6d';ctx.font='bold 11px sans-serif';ctx.fillText('▼',p.x-7,p.y-size-8);
+                if(ENHANCED.esp){
+                    ctx.fillStyle='#8899aa';ctx.font='9px monospace';
+                    ctx.fillText(Math.round(dist/CONFIG.radarRadius*100)+'m',p.x-10,p.y+size+16);
+                }
+            }
+            if(ENHANCED.esp&&p.weaponType==='sniper'){ctx.fillStyle='#ffaa00';ctx.font='9px sans-serif';ctx.fillText('🔭',p.x+size+4,p.y-2);}
+        }
+        ctx.beginPath();ctx.arc(cx,cy,5,0,2*Math.PI);ctx.fillStyle='#ff4d6d';ctx.shadowColor='#ff4d6d';ctx.shadowBlur=20;ctx.fill();ctx.shadowBlur=0;
+        ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(cx-3,cy);ctx.lineTo(cx+3,cy);ctx.moveTo(cx,cy-3);ctx.lineTo(cx,cy+3);ctx.stroke();
+        ctx.beginPath();ctx.arc(cx,cy,radius,0,2*Math.PI);ctx.strokeStyle='#2a3f55';ctx.lineWidth=1.5;ctx.stroke();
+        targetCountEl.textContent=vc+'/'+players.length+' ('+ec+'敌)';
+    }
+
+    function updateConnectionQuality() {
+        connectionQuality+=(Math.random()-0.5)*2;connectionQuality=Math.max(85,Math.min(100,connectionQuality));
+        if(connectionQuality>95){connectionStatus.innerHTML='🔗 优秀';connectionStatus.style.color='#4cd9a0';kernelState.textContent='READY';kernelState.style.color='#4cd9a0';}
+        else if(connectionQuality>90){connectionStatus.innerHTML='🔗 良好';connectionStatus.style.color='#8cd4b0';kernelState.textContent='READY';kernelState.style.color='#4cd9a0';}
+        else{connectionStatus.innerHTML='⚠ 波动';connectionStatus.style.color='#ffaa00';kernelState.textContent='DEGRADED';kernelState.style.color='#ffaa00';}
+        if(Math.random()<0.02){kernelPid.textContent='PID: 0x'+Math.floor(Math.random()*0xFFFF).toString(16).toUpperCase().padStart(4,'0');}
     }
 
     function gameLoop(timestamp) {
-        if (!isRunning) { requestAnimationFrame(gameLoop); return; }
-        const delta = timestamp - lastTimestamp;
-        if (delta >= 200) { const rate = Math.round(1000 / (delta / frameCount || 1)); updateRateEl.textContent = rate; frameCount = 0; lastTimestamp = timestamp; }
-        frameCount++;
-        updatePlayers(); drawRadar();
-        const now = new Date();
-        statusTimeEl.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        if(!isRunning){requestAnimationFrame(gameLoop);return;}
+        const delta=timestamp-lastTimestamp;
+        if(delta>=200){updateRateEl.textContent=Math.round(1000/(delta/frameCount||1));frameCount=0;lastTimestamp=timestamp;}
+        frameCount++;updatePlayers();updateConnectionQuality();drawRadar();
+        const now=new Date();
+        statusTimeEl.textContent=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
         requestAnimationFrame(gameLoop);
     }
 
+    function initUI() {
+        document.getElementById('gameSelector').addEventListener('click',function(e){
+            const btn=e.target.closest('.game-btn');if(!btn)return;
+            this.querySelectorAll('.game-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+            const g=btn.dataset.game;
+            if(g==='delta'){CONFIG.playerCount=12;CONFIG.enemyRatio=0.65;}
+            else if(g==='pubg'){CONFIG.playerCount=15;CONFIG.enemyRatio=0.7;}
+            else if(g==='codm'){CONFIG.playerCount=10;CONFIG.enemyRatio=0.6;}
+            else{CONFIG.playerCount=16;CONFIG.enemyRatio=0.55;}
+            players=generatePlayers(CONFIG.playerCount);generateParticles();
+        });
+        document.getElementById('toggleSimBtn').addEventListener('click',function(){
+            isRunning=!isRunning;simBtnText.textContent=isRunning?'⏸ 暂停':'▶ 继续';
+            if(isRunning){statusBadge.textContent='● 在线';statusBadge.style.background='#1f8b4c';kernelStatusEl.classList.add('connected');radarWrapper.classList.add('active');}
+            else{statusBadge.textContent='○ 暂停';statusBadge.style.background='#5a3a10';kernelStatusEl.classList.remove('connected');radarWrapper.classList.remove('active');}
+        });
+        document.getElementById('settingsBtn').addEventListener('click',function(){
+            const panel=document.getElementById('enhancedPanel');
+            panel.classList.toggle('visible');this.textContent=panel.classList.contains('visible')?'⚙ 隐藏':'⚙ 设置';
+        });
+        document.getElementById('resetBtn').addEventListener('click',function(){
+            players=generatePlayers(CONFIG.playerCount);generateParticles();scanAngle=0;connectionQuality=100;
+            connectionStatus.innerHTML='🔗 已连接';connectionStatus.style.color='#4cd9a0';
+            kernelState.textContent='READY';kernelState.style.color='#4cd9a0';
+            statusBadge.textContent='● 在线';statusBadge.style.background='#1f8b4c';
+            if(!isRunning){isRunning=true;simBtnText.textContent='⏸ 暂停';kernelStatusEl.classList.add('connected');radarWrapper.classList.add('active');}
+        });
+        document.getElementById('aimAssist').addEventListener('click',function(){
+            ENHANCED.aimAssist=!ENHANCED.aimAssist;
+            document.getElementById('aimStatus').textContent=ENHANCED.aimAssist?'开启':'关闭';
+            document.getElementById('aimStatus').style.color=ENHANCED.aimAssist?'#4cd9a0':'#ff4d6d';
+        });
+        document.getElementById('espToggle').addEventListener('click',function(){
+            ENHANCED.esp=!ENHANCED.esp;
+            document.getElementById('espStatus').textContent=ENHANCED.esp?'开启':'关闭';
+            document.getElementById('espStatus').style.color=ENHANCED.esp?'#4cd9a0':'#ff4d6d';
+        });
+        document.getElementById('noRecoil').addEventListener('click',function(){
+            ENHANCED.noRecoil=!ENHANCED.noRecoil;
+            document.getElementById('recoilStatus').textContent=ENHANCED.noRecoil?'开启':'关闭';
+            document.getElementById('recoilStatus').style.color=ENHANCED.noRecoil?'#4cd9a0':'#ff4d6d';
+        });
+        document.getElementById('speedBoost').addEventListener('click',function(){
+            ENHANCED.speedBoost=!ENHANCED.speedBoost;
+            document.getElementById('speedStatus').textContent=ENHANCED.speedBoost?'开启':'关闭';
+            document.getElementById('speedStatus').style.color=ENHANCED.speedBoost?'#4cd9a0':'#ff4d6d';
+            CONFIG.moveSpeed=ENHANCED.speedBoost?1.6:0.8;
+        });
+        document.getElementById('aimStatus').style.color='#4cd9a0';
+        document.getElementById('espStatus').style.color='#4cd9a0';
+        document.getElementById('recoilStatus').style.color='#4cd9a0';
+        document.getElementById('speedStatus').style.color='#ff4d6d';
+    }
+
+    // ============================================================
+    //  初始化
+    // ============================================================
     function init() {
+        // 检查授权
+        licenseStatus = window.JueBieLicense.check();
+
+        // 验证存储完整性
+        if (!window.JueBieLicense.verifyIntegrity()) {
+            console.warn('[诀别] 存储完整性校验失败，重置授权');
+            window.JueBieLicense.reset();
+            licenseStatus = null;
+        }
+
+        updateLicenseBadge();
+        updateLicenseInfoBox();
+
+        // 如果未激活，锁定主界面并弹出激活窗
+        if (!licenseStatus || !licenseStatus.activated) {
+            appMain.classList.add('locked');
+            setTimeout(function() { openActivateModal(); }, 500);
+        }
+
+        // 初始化雷达
         players = generatePlayers(CONFIG.playerCount);
-        for (let i = 0; i < players.length; i++) {
-            for (let j = i + 1; j < players.length; j++) {
-                if (Math.hypot(players[i].x - players[j].x, players[i].y - players[j].y) < 20) { players[j].x += 30; players[j].y += 30; }
+        generateParticles();
+        for (let i=0;i<players.length;i++) {
+            for (let j=i+1;j<players.length;j++) {
+                if(Math.hypot(players[i].x-players[j].x,players[i].y-players[j].y)<25){
+                    players[j].x+=35;players[j].y+=35;
+                }
             }
         }
-        lastTimestamp = performance.now();
+        initUI();
+        lastTimestamp=performance.now();
         requestAnimationFrame(gameLoop);
-        document.getElementById('toggleSimBtn').addEventListener('click', function() { isRunning = !isRunning; simBtnText.textContent = isRunning ? 'PAUSE' : 'START'; });
     }
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+
+    // 前后台切换时刷新授权
+    window.onAppForeground = function() {
+        licenseStatus = window.JueBieLicense.check();
+        updateLicenseBadge();
+        if (!licenseStatus || !licenseStatus.activated) {
+            appMain.classList.add('locked');
+            openActivateModal();
+        } else {
+            appMain.classList.remove('locked');
+        }
+    };
+
+    window.onAppBackground = function() {
+        // 暂停时可以保存状态
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 </script>
 </body>
